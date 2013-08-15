@@ -470,7 +470,7 @@ class Cluster(BaseType):
 
     def connectClusterToMyQpackages(self,hostnames=[]):
         """
-        connect the nodes of the cluster to my /opt/qbase6/var/owpackages5 directory
+        connect the nodes of the cluster to my /opt/qbase6/var/owpackages directory
         also push my owpackages configuration to the other clusternodes
         allows the cluster to install from my local owpackages (not from the central repo)
         """

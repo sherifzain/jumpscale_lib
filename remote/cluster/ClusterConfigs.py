@@ -32,7 +32,7 @@ class ClusterConfig(ConfigManagementItem):
         #"""
         #Optional implementation of retrieve() method, to be used by find()
         #"""
-##        return openwizzy.o.clients.hg.clone(self.params['url'], self.params['login'], self.params['passwd'], self.params['destination'])
+##        return o.clients.hg.clone(self.params['url'], self.params['login'], self.params['passwd'], self.params['destination'])
 
         #from OpenWizzy.core.clients.hg.HgTool import HgConnection as HgConn
         #return HgConn(self.params['url'], self.params['login'], self.params['passwd'], self.params['destination'])

@@ -30,7 +30,7 @@ class ClusterFactory():
         """
         return cluster for specified domain or shortname, 
         there needs to be a cluster defined already before otherwise no nodes will be found
-        config file which stores this info is at $qbasedir/cfg/qconfig/clusterconfig.cfg
+        config file which stores this info is at $qbasedir/cfg/jsconfig/clusterconfig.cfg
         only one of th 2 params is required
         """        
         if clustername=="" and domainname=="":

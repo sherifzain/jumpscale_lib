@@ -25,7 +25,7 @@ class UnameCommand(CommandWrapper):
         #This check on the platform type is not supposed to happen, but it is implemented as a temp solution
         #beside the dummpy vapps to solve the dependency per platform problem
         if not o.system.platformtype.isUnix():
-            raise RuntimeError("Command [%s] not supported on [%s]"%(command, o.platform))
+            raise RuntimeError("Command [%s] not supported on [%s]"%(command, o.system.platformtype))
         exitcode, output = o.system.process.execute('%s 2>&1'%command, outputToStdout=False, dieOnNonZeroExitCode=False)
         if exitcode != 0:
             raise RuntimeError('Command: %(command)s failed with exitcode %(exitcode)s. Output: %(output)s'%{'command':command, 'exitcode':exitcode, 'output':str(output)})

@@ -316,7 +316,7 @@ o.application.stop()
         mount /opt/code to /opt/code of the specified node (ipaddr)
         """
         raise RuntimeError("Not implemented, check code and adjust for qbase6")
-        dirpath="/opt/qbase6/var/owpackages5"
+        dirpath="/opt/qbase6/var/owpackages"
         self.connectToNFSServer(dirpath,ipaddr,delete)
         
     def installQPackage(self, name):
