@@ -32,38 +32,42 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBObject import CMDBObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBObject import CMDBObject
 
 import DevicePerformance
 import DeviceOperatingSystem
 import DeviceHypervisor
 
+
 class Device(CMDBObject):
+
     """
     Simplified database representation of a hardware inventory of a device
     """
 
     cmdbtypename = 'deviceInventory'
 
-    name                  = o.basetype.string(doc = "device host name", flag_dirty = True)
-    disks                 = o.basetype.dictionary(doc = "list of hard disks present in the device", allow_none = True)
-    nics                  = o.basetype.dictionary(doc = "list of network interface cards present in the device", allow_none = True)
-    totalMemoryInMB       = o.basetype.integer(doc = "total mb of RAM present in the device", allow_none = False, default = 0)
-    numberOfCPUs          = o.basetype.integer(doc = "number of cpu's present in the device", allow_none = False, default = 0)
-    numberOfCPUCores      = o.basetype.integer(doc = "number of cpu cores present in the device", allow_none = False, default = 0)
-    totalCPUFrequency     = o.basetype.integer(doc = "sum of cpu frequencies provided by all cpu cores present in the device", allow_none = False, default = 0)
-    pCIBusComponents      = o.basetype.list(doc = "List of PCI bus components", flag_dirty = True, allow_none = True, default = list())
-    iSCSIInitiators       = o.basetype.list(doc = "List of ISCSI initiators", flag_dirty = True, allow_none = True, default = list())
-    iSCSITargets          = o.basetype.list(doc = "List of ISCSI targets", flag_dirty = True, allow_none = True, default = list())
-    zFSList               = o.basetype.list(doc = "List of ZFileSystems", flag_dirty = True, allow_none = True, default = list())
-    zPoolList             = o.basetype.list(doc = "List of ZPools", flag_dirty = True, allow_none = True, default = list())
-    performance           = o.basetype.object(DevicePerformance.DevicePerformance, doc = "Device Performance data", flag_dirty = True, allow_none = True, default = None)
-    os                    = o.basetype.object(DeviceOperatingSystem.DeviceOperatingSystem, doc = "Device operating system data", flag_dirty = True, allow_none = True, default = None)
-    hypervisor            = o.basetype.object(DeviceHypervisor.DeviceHypervisor, doc = "Device hypervisor type, vmachines data", flag_dirty = True, allow_none = True, default = None)
+    name = j.basetype.string(doc="device host name", flag_dirty=True)
+    disks = j.basetype.dictionary(doc="list of hard disks present in the device", allow_none=True)
+    nics = j.basetype.dictionary(doc="list of network interface cards present in the device", allow_none=True)
+    totalMemoryInMB = j.basetype.integer(doc="total mb of RAM present in the device", allow_none=False, default=0)
+    numberOfCPUs = j.basetype.integer(doc="number of cpu's present in the device", allow_none=False, default=0)
+    numberOfCPUCores = j.basetype.integer(doc="number of cpu cores present in the device", allow_none=False, default=0)
+    totalCPUFrequency = j.basetype.integer(doc="sum of cpu frequencies provided by all cpu cores present in the device", allow_none=False, default=0)
+    pCIBusComponents = j.basetype.list(doc="List of PCI bus components", flag_dirty=True, allow_none=True, default=list())
+    iSCSIInitiators = j.basetype.list(doc="List of ISCSI initiators", flag_dirty=True, allow_none=True, default=list())
+    iSCSITargets = j.basetype.list(doc="List of ISCSI targets", flag_dirty=True, allow_none=True, default=list())
+    zFSList = j.basetype.list(doc="List of ZFileSystems", flag_dirty=True, allow_none=True, default=list())
+    zPoolList = j.basetype.list(doc="List of ZPools", flag_dirty=True, allow_none=True, default=list())
+    performance = j.basetype.object(
+        DevicePerformance.DevicePerformance, doc="Device Performance data", flag_dirty=True, allow_none=True, default=None)
+    os = j.basetype.object(
+        DeviceOperatingSystem.DeviceOperatingSystem, doc="Device operating system data", flag_dirty=True, allow_none=True, default=None)
+    hypervisor = j.basetype.object(
+        DeviceHypervisor.DeviceHypervisor, doc="Device hypervisor type, vmachines data", flag_dirty=True, allow_none=True, default=None)
     # cpu addressing 32bit <-> 64 bit?
-
 
     def __init__(self):
         CMDBObject.__init__(self)
@@ -73,7 +77,6 @@ class Device(CMDBObject):
             self.os = DeviceOperatingSystem.DeviceOperatingSystem()
         if not self.hypervisor:
             self.hypervisor = DeviceHypervisor.DeviceHypervisor()
-
 
     def __repr__(self):
         variables = ('name', 'disks', 'nics', 'totalMemoryInMB', 'numberOfCPUs', 'numberOfCPUCores', 'totalCPUFrequency', 'performance', 'os')

@@ -1,7 +1,7 @@
 
-from OpenWizzy import o
+from JumpScale import j
 
-o.base.loader.makeAvailable(o, 'tools')
+j.base.loader.makeAvailable(j, 'tools')
 
 try:
     import psutil
@@ -10,8 +10,8 @@ except:
 
 import psutil
 
-o.tools.psutil=psutil
+j.tools.psutil = psutil
 
 # from PSutilTool import PSutilTool
 
-# o.tools.psutil=PSutilTool()
+# j.tools.psutil=PSutilTool()

@@ -1,8 +1,8 @@
 
-from OpenWizzy import o
+from JumpScale import j
 
-o.base.loader.makeAvailable(o, 'tools')
+j.base.loader.makeAvailable(j, 'tools')
 
 from PuppetTool import PuppetTool
 
-o.tools.puppet=PuppetTool()
+j.tools.puppet = PuppetTool()

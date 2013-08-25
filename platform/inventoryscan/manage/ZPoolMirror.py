@@ -32,15 +32,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class ZPoolMirror(CMDBSubObject):
 
-    status = o.basetype.string(doc = 'Status of mirror', allow_none = False)
-    disks = o.basetype.list(doc = 'List of all available disks, and their status', allow_none = False, default = list())
-
+    status = j.basetype.string(doc='Status of mirror', allow_none=False)
+    disks = j.basetype.list(doc='List of all available disks, and their status', allow_none=False, default=list())
 
     def __repr__(self):
-        return str({'status' : self.status, 'disks' : self.disks})
+        return str({'status': self.status, 'disks': self.disks})

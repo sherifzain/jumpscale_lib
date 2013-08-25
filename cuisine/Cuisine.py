@@ -1,9 +1,9 @@
-from OpenWizzy import o
+from JumpScale import j
 
-import OpenWizzy.lib.fabric
+import JumpScale.lib.fabric
 
-o.system.platform.ubuntu.check()
-do=o.develtools.installer._do
+j.system.platform.ubuntu.check()
+do = j.develtools.installer._do
 
 try:
     import cuisine
@@ -12,29 +12,26 @@ except:
 
 import cuisine
 
+
 class Cuisine():
+
     def __init__(self):
-        self.api=cuisine
-        self.fabric=o.tools.fabric.api
-        o.tools.fabric.setHost()
+        self.api = cuisine
+        self.fabric = j.tools.fabric.api
+        j.tools.fabric.setHost()
 
     def install(self):
-        codename,descr,id,release=o.system.platform.ubuntu.getVersion()
-        do=o.develtools.installer._do
+        codename, descr, id, release = j.system.platform.ubuntu.getVersion()
+        do = j.develtools.installer._do
         do.execute("easy_install cuisine")
 
-
     def help(self):
-        C="""
-import OpenWizzy.lib.cuisine        
+        C = """
+import JumpScale.lib.cuisine        
 #easiest way to use do:
-c=o.tools.cuisine
+c=j.tools.cuisine
 #and then
 
 c.user_ensure(...)
         """
         print C
-        
-
-
-        

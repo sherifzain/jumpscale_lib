@@ -32,26 +32,28 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
+
 import re
 import os
 import re
 import time
 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CommandWrapper import CommandWrapper
+from JumpScale import j
+from JumpScale.core.baseclasses.CommandWrapper import CommandWrapper
 from collections import defaultdict
 
 from InventoryScanEnums import *
 
+
 class NetworkCounterResetException(Exception):
     pass
+
 
 class EnumerateResourcesCommand(CommandWrapper):
 
     def getCFCards(self):
         cfCards = list()
-        cfDevices = o.system.fs.find('/dev/', 'fstl*')
+        cfDevices = j.system.fs.find('/dev/', 'fstl*')
         for cfDevice in cfDevices:
             cfCards.append(cfDevice.replace('fstl', ''))
         return cfCards
@@ -64,46 +66,46 @@ class EnumerateResourcesCommand(CommandWrapper):
         On Linux user must have root privileges
         @return: list of text entries (or tuples)
         """
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
             try:
-                exitCode, output = o.cmdtools.disktools.fdisk.listDisks()
-            except RuntimeError, ex:
+                exitCode, output = j.cmdtools.disktools.fdisk.listDisks()
+            except RuntimeError as ex:
                 if ex.message.find("fdisk: command not found") > -1:
-                    o.logger.log("Unable to list Disks. Reason fdisk command not found.", 3)
+                    j.logger.log("Unable to list Disks. Reason fdisk command not found.", 3)
                     raise RuntimeError("Unable to list Disks. Reason fdisk command not found; make sure you are running Qshell using root user.")
                 else:
-                    o.logger.log("Unable to list Disks. Reason %s"%ex.message, 3)
-                    raise RuntimeError("Unable to list Disks. Reason %s"%ex.message)
-            partionInfo = o.cmdtools.partitioninfo.info()
-            
+                    j.logger.log("Unable to list Disks. Reason %s" % ex.message, 3)
+                    raise RuntimeError("Unable to list Disks. Reason %s" % ex.message)
+            partionInfo = j.cmdtools.partitioninfo.info()
+
             pattern = re.compile("Disk [^identifier].*\n")
-            
-            partionParams = {'fileSystemType':'fstype',
-                             'Label':'label',
-                             'usedGB':'used',
-                             'mountpoint':'mountpoint',
-                             'devices':'devices',
-                             'Active Devices':'activeDevices',
-                             'Raid Devices':'raidDevices',
-                             'Raid Level':'level',
-                             'Spare Devices':'spareDevices',
-                             'Total Devices':'totalDevices',
-                             'Failed Devices':'failedDevices',
-                             'State':'state'}
+
+            partionParams = {'fileSystemType': 'fstype',
+                             'Label': 'label',
+                             'usedGB': 'used',
+                             'mountpoint': 'mountpoint',
+                             'devices': 'devices',
+                             'Active Devices': 'activeDevices',
+                             'Raid Devices': 'raidDevices',
+                             'Raid Level': 'level',
+                             'Spare Devices': 'spareDevices',
+                             'Total Devices': 'totalDevices',
+                             'Failed Devices': 'failedDevices',
+                             'State': 'state'}
 
             entries = pattern.findall(output)
             disks = dict()
-            
-            #Get list of cfcard devices
+
+            # Get list of cfcard devices
             cfCards = self.getCFCards()
             dssBlkDevices = self._getDssBlkDevices()
             for entry in entries:
-                #Filter out dssblk devices
+                # Filter out dssblk devices
                 if not [device for device in dssBlkDevices if device in entry]:
                     disk = entry.split(',')[0].split(' ')
                     if entry.find(':') > 0:
-                        name = disk[1].replace(':','').strip()
-                        #Filter out the CFCARDS here??
+                        name = disk[1].replace(':', '').strip()
+                        # Filter out the CFCARDS here??
                         if not name.split('/')[-1] in cfCards:
                             partitions = self.getPartitions(name)
                             for partition in partitions:
@@ -111,48 +113,49 @@ class EnumerateResourcesCommand(CommandWrapper):
                                 if not name.startswith('/dev/md'):
                                     partionName += partition['number']
                                 if partionName in partionInfo:
-                                    for key,value in partionParams.iteritems():
+                                    for key, value in partionParams.iteritems():
                                         if key in partionInfo[partionName]:
                                             partition[value] = partionInfo[partionName][key]
-                                    if 'devices' in partition: partition['backendsize'] = self._calculatePhysicalSizeOfRaid(partition['devices'])
+                                    if 'devices' in partition:
+                                        partition['backendsize'] = self._calculatePhysicalSizeOfRaid(partition['devices'])
                         else:
                             partitions = []
                         disks[name] = {'size': disk[2],
                                        'unit': disk[3],
-                                       'partitions' : partitions}
+                                       'partitions': partitions}
                     else:
                         name = disk[1].strip()
                         disks[name] = {}
 
             return disks
-        elif o.system.platformtype.isSolaris():
+        elif j.system.platformtype.isSolaris():
             root = '/dev/rdsk/'
             try:
-                #here using os.listdir instead of o.system.fs.Walker because o.system.fs.Walker returns only files or directories and filters out links
-                #Here, I want to list link files that are filtered out by o.system.fs.Walker
+                # here using os.listdir instead of j.system.fs.Walker because j.system.fs.Walker returns only files or directories and filters out links
+                # Here, I want to list link files that are filtered out by j.system.fs.Walker
 
                 devLinks = os.listdir(root)
-            except os.error, ex:
-                o.logger.log("Unable to list Disks. Reason %s"%ex.message, 3)
-                raise RuntimeError("Unable to list Disks. Reason %s"%ex.message)
-            diskNames = list(o.system.fs.joinPaths(root, diskName) for diskName in devLinks if diskName.endswith('p0'))
+            except os.error as ex:
+                j.logger.log("Unable to list Disks. Reason %s" % ex.message, 3)
+                raise RuntimeError("Unable to list Disks. Reason %s" % ex.message)
+            diskNames = list(j.system.fs.joinPaths(root, diskName) for diskName in devLinks if diskName.endswith('p0'))
             disks = list()
             for name in diskNames:
-                if not self._isIscsi(name): #ignore iscsi disks
+                if not self._isIscsi(name):  # ignore iscsi disks
                     try:
-                        size = o.cmdtools.disktools.fdisk.getSize(name)
-                        disks.append((name, "%s GB"%(size/(1024*1024*1024))))
+                        size = j.cmdtools.disktools.fdisk.getSize(name)
+                        disks.append((name, "%s GB" % (size / (1024 * 1024 * 1024))))
                     except RuntimeError:
                         pass
                 else:
-                    o.logger.log("Ignoring iscsi  disk %s while scanning device disks"%name, 4)
+                    j.logger.log("Ignoring iscsi  disk %s while scanning device disks" % name, 4)
 #                except RuntimeError, ex:
-#                    o.logger.log("Unable to list Disks. Reason %s"%ex.message, 3)
+#                    j.logger.log("Unable to list Disks. Reason %s"%ex.message, 3)
 #                    raise RuntimeError("Unable to list Disks. Reason %s"%ex.message)
             return tuple(disks)
         else:
             raise RuntimeError("Operation not supported on this platform")
-    
+
     def getPartitions(self, deviceName):
         """
         List partitions on specified devicename
@@ -161,22 +164,23 @@ class EnumerateResourcesCommand(CommandWrapper):
         @type devicename: string
         @return: list of partition dict
         """
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
             pattern = re.compile('^/dev/(?P<dev>\w*)$')
             match = pattern.match(deviceName)
-            if match: deviceName = match.groups()[0]
+            if match:
+                deviceName = match.groups()[0]
             try:
-                partitions = o.cmdtools.partitioninfo.infoParted(deviceName,'miB')
-            except RuntimeError, e:
+                partitions = j.cmdtools.partitioninfo.infoParted(deviceName, 'miB')
+            except RuntimeError as e:
                 if 'unrecognised disk label' in e.message:
-                    o.cmdtools.disktools.parted.createLabel(deviceName, 'gpt')
-                    partitions = o.cmdtools.partitioninfo.infoParted(deviceName,'miB')
+                    j.cmdtools.disktools.parted.createLabel(deviceName, 'gpt')
+                    partitions = j.cmdtools.partitioninfo.infoParted(deviceName, 'miB')
                 else:
                     raise
             return partitions
-        elif o.system.platformtype.isSolaris():
+        elif j.system.platformtype.isSolaris():
             raise NotImplementedError()
-        
+
     def _isIscsi(self, deviceName):
         """
         Find out if the Device is an iscsi device using ls -lsa
@@ -185,8 +189,8 @@ class EnumerateResourcesCommand(CommandWrapper):
         @return: is iscsi
         @rtype: boolean
         """
-        exitCode, output = o.system.process.execute('ls -lsa %s'%deviceName, outputToStdout=False)
-        return output.find('iscsi')>-1
+        exitCode, output = j.system.process.execute('ls -lsa %s' % deviceName, outputToStdout=False)
+        return output.find('iscsi') > -1
 
     def getNics(self):
         """
@@ -195,45 +199,44 @@ class EnumerateResourcesCommand(CommandWrapper):
         Parses the command output into a list of record entries
         @return: list of text entries (or tuples)
         """
-        nicNames = o.system.net.getNics()
+        nicNames = j.system.net.getNics()
         nics = list()
         for name in nicNames:
-            nics.append((name, o.system.net.getMacAddress(name), self._getNicType(name)))
+            nics.append((name, j.system.net.getMacAddress(name), self._getNicType(name)))
         return tuple(nics)
-
 
     def _getNicType(self, interface):
         """
         Retrieves the NicType of a network interface
-        This is an alternative implementation for o.system.net.getNicType() cause it doesn't get the interface speed it only tells if this Nic is virtual, ethernet_GB
+        This is an alternative implementation for j.system.net.getNicType() cause it doesn't get the interface speed it only tells if this Nic is virtual, ethernet_GB
 
         @param interface: Interface to determine Nic type on
         @rtype: NicTypes
-        @return: the type of the Nic, one of the values of o.enumerators.NicTypes
+        @return: the type of the Nic, one of the values of j.enumerators.NicTypes
         """
         type = ''
         # infiniband cards start always with IBx naming convention,
         # ethtool/ndd can't query a IB interface
         if interface.lower().startswith('ib'):
             type = 'IB'
-        elif o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+        elif j.system.platformtype.isLinux() or j.system.platformtype.isESX():
             try:
-                output = o.cmdtools.ethtool.getInterfaceType(interface)
-            except RuntimeError, ex:
-                o.logger.log("Failed to retrieve NicType of interface[%s]. Reason: %s"%(interface, ex.message), 3)
+                output = j.cmdtools.ethtool.getInterfaceType(interface)
+            except RuntimeError as ex:
+                j.logger.log("Failed to retrieve NicType of interface[%s]. Reason: %s" % (interface, ex.message), 3)
                 type = ''
             else:
                 out = output.get('Supported link modes', None)
                 if out:
                     type = out[-1].split('baseT')[0]
 
-        elif o.system.platformtype.isSolaris():
+        elif j.system.platformtype.isSolaris():
             try:
-                exitCode, output = o.cmdtools.ndd.getInterfaceLinkSpeed(interface)
+                exitCode, output = j.cmdtools.ndd.getInterfaceLinkSpeed(interface)
                 type = output.strip()
-            except RuntimeError, ex:
+            except RuntimeError as ex:
                 if ex.message.find('No such file or directory') < 0:
-                    o.logger.log("Failed to retrieve NicType of interface[%s]. Reason: %s"%(interface, ex.message), 3)
+                    j.logger.log("Failed to retrieve NicType of interface[%s]. Reason: %s" % (interface, ex.message), 3)
                     type = ''
         else:
             raise RuntimeError("Operation not supported on this platform")
@@ -249,46 +252,44 @@ class EnumerateResourcesCommand(CommandWrapper):
         else:
             return NicTypes.UNKNOWN
 
-
     def getMemoryInfo(self):
         """
         Calculates total MB of RAM present in the device
 
         @return total memory in MB
         """
-        #Handle Xen dom0 - DAL-1986
+        # Handle Xen dom0 - DAL-1986
         try:
             import xen.xend.XendClient
             info = dict(xen.xend.XendClient.server.xend.node.info())
             tot_ram = info['total_memory']
-            o.logger.log('Got total amount of memory through xend: %d' % \
-                    tot_ram, 5)
+            j.logger.log('Got total amount of memory through xend: %d' %
+                         tot_ram, 5)
             return tot_ram
         except KeyError:
             #'total_memory' is not defined, was there some API change?
             raise
         except:
-            o.logger.log(
+            j.logger.log(
                 'Unable to request memory using xend, this is most likely not an issue', 8)
 
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX() or o.system.platformtype.isSolaris():
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX() or j.system.platformtype.isSolaris():
             #@REMARK (memory size - kernel size) : didn't give full size of memory
-            return o.system.unix.getMachineInfo()[0]
+            return j.system.unix.getMachineInfo()[0]
         else:
             raise RuntimeError("Operation not supported on this platform.")
-
 
     def getCPUInfo(self):
         """
         Calculates numberOfCpus, numberOfCpuCores, totalCpuFrequency processing power present in the device
-        This method provides alternative implementation for o.system.unix.getMachineInfo() since the later does not provide numberOfCpus
+        This method provides alternative implementation for j.system.unix.getMachineInfo() since the later does not provide numberOfCpus
 
         @rtype: tuple
         @return (numberOfCpus, numberOfCpuCores, totalCpuFrequency)
         """
 
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
-            processorInfoText = o.system.fs.fileGetContents('/proc/cpuinfo')
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
+            processorInfoText = j.system.fs.fileGetContents('/proc/cpuinfo')
             processorInfo = self._extractProcessorInfo(processorInfoText)
             numberOfCpus = 0
             coreNumbers = 0
@@ -314,12 +315,12 @@ class EnumerateResourcesCommand(CommandWrapper):
                     info[phId]['cores'].add(coreId)
                     coreNumbers += 1
             return (len(info), coreNumbers, int(totalCpuFrequency))
-        elif o.system.platformtype.isSolaris():
+        elif j.system.platformtype.isSolaris():
             try:
-                exitCode, output = o.cmdtools.psrinfo.getProcessorCoresInfo()
-            except RuntimeError, ex:
-                o.logger.log("Unable to list CPUs. Reason %s"%ex.message, 3)
-                raise RuntimeError("Unable to list CPUs. Reason %s"%ex.message)
+                exitCode, output = j.cmdtools.psrinfo.getProcessorCoresInfo()
+            except RuntimeError as ex:
+                j.logger.log("Unable to list CPUs. Reason %s" % ex.message, 3)
+                raise RuntimeError("Unable to list CPUs. Reason %s" % ex.message)
             pattern = re.compile("operates at.*")
             entries = pattern.findall(output)
             numberOfCores = 0
@@ -328,15 +329,14 @@ class EnumerateResourcesCommand(CommandWrapper):
                 numberOfCores += 1
                 totalCpuFrequency += int(entry.split(' ')[2])
             try:
-                exitCode, output = o.cmdtools.psrinfo.getNumberOfProcessors()
-            except RuntimeError, ex:
-                o.logger.log("Unable to list CPUs. Reason %s"%ex.message, 3)
-                raise RuntimeError("Unable to list CPUs. Reason %s"%ex.message)
+                exitCode, output = j.cmdtools.psrinfo.getNumberOfProcessors()
+            except RuntimeError as ex:
+                j.logger.log("Unable to list CPUs. Reason %s" % ex.message, 3)
+                raise RuntimeError("Unable to list CPUs. Reason %s" % ex.message)
             numberOfCpus = int(output)
             return(numberOfCpus, numberOfCores, int(totalCpuFrequency))
         else:
             raise RuntimeError("Operation not supported on this platform")
-
 
     def _extractProcessorInfo(self, processorInfo):
         """
@@ -349,13 +349,12 @@ class EnumerateResourcesCommand(CommandWrapper):
         recordPattern = '.*?\\n\\n'
         fieldPattern = '.*?\\n'
         toReturn = list()
-        records = list( record.replace('\n\n','') for record in re.findall(recordPattern, processorInfo, re.DOTALL))
+        records = list(record.replace('\n\n', '') for record in re.findall(recordPattern, processorInfo, re.DOTALL))
         for record in records:
-            fields = list( field.replace('\n','').split(':')[1].strip() for field in re.findall(fieldPattern, record))
-            recordList = {'processorId': fields[0],'frequency': fields[6], 'physicalId': fields[8], 'coreId': fields[10], 'cpucores':fields[11]}
+            fields = list(field.replace('\n', '').split(':')[1].strip() for field in re.findall(fieldPattern, record))
+            recordList = {'processorId': fields[0], 'frequency': fields[6], 'physicalId': fields[8], 'coreId': fields[10], 'cpucores': fields[11]}
             toReturn.append(recordList)
         return tuple(toReturn)
-
 
     def getPCIBusComponents(self):
         """
@@ -364,12 +363,12 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: List  of dictionaries [{componentName:<>, manufacturer:<>, model:<>}]
         @return: Component name, manufacturer, and model for each PCI component
         """
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
             try:
-                componentString = o.cmdtools.lspci.listComponents()
-            except RuntimeError, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError("Failed to retrieve PCI Bus components. Reason: [%s]"%ex.message)
+                componentString = j.cmdtools.lspci.listComponents()
+            except RuntimeError as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError("Failed to retrieve PCI Bus components. Reason: [%s]" % ex.message)
             componentEntries = componentString.split('\n')
             components = list()
             for component in componentEntries:
@@ -380,7 +379,6 @@ class EnumerateResourcesCommand(CommandWrapper):
         else:
             raise RuntimeError("Operation not supported on this platform")
 
-
     def getRunningProcesses(self):
         """
         Retrieves all the running processes on a machine
@@ -389,26 +387,24 @@ class EnumerateResourcesCommand(CommandWrapper):
         @return: PID, and processName for each running process
         @raise RuntimeError:
         """
-        o.logger.log("Retrieving the current running processes", 3)
+        j.logger.log("Retrieving the current running processes", 3)
         try:
-            output = o.cmdtools.ps.getRunningProcesses()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve running processes. Reason: [%s]"%ex.message)
-        output = output[output.find('\n')+1:]
+            output = j.cmdtools.ps.getRunningProcesses()
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve running processes. Reason: [%s]" % ex.message)
+        output = output[output.find('\n') + 1:]
         lines = output.split('\n')
         result = list()
         for line in lines:
             record = dict()
-            attributs  = line.split()
+            attributs = line.split()
             if not attributs:
                 continue
             record["PID"] = int(attributs[0])
             record["processName"] = attributs[3]
             result.append(record)
         return result
-
-
 
     def getIPAddress(self, nicName):
         """
@@ -417,12 +413,11 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: dict {'ip':<>, 'subnetMask':<>, 'defaultRoute':<>}
         @return: IPAdress, subnet mask, and default route of an interface
         """
-        addresses = o.system.net.getIpAddress(nicName)
+        addresses = j.system.net.getIpAddress(nicName)
         ip, subnetMask, defaultRoute = '', '', ''
         if addresses:
             ip, subnetMask, defaultRoute = addresses[0]
-        return {'ip': ip, 'subnetMask':subnetMask, 'defaultRoute':defaultRoute}
-
+        return {'ip': ip, 'subnetMask': subnetMask, 'defaultRoute': defaultRoute}
 
     def getFreeMemory(self):
         """
@@ -431,14 +426,14 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: dict
         @return: freeMemory, freeSwapMemory
         """
-        o.logger.log("Retrieving free Memory on the system", 3)
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+        j.logger.log("Retrieving free Memory on the system", 3)
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
             try:
-                output = o.cmdtools.free.getFreeMemory()
-            except RuntimeError, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError("Failed to retrieve used Memory on the system. Reason: [%s]"%ex.message)
-            output = output[output.find('\n')+1:]
+                output = j.cmdtools.free.getFreeMemory()
+            except RuntimeError as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError("Failed to retrieve used Memory on the system. Reason: [%s]" % ex.message)
+            output = output[output.find('\n') + 1:]
             lines = output.split('\n')
             memRecord = lines[0]
             swapRecord = lines[2]
@@ -448,12 +443,12 @@ class EnumerateResourcesCommand(CommandWrapper):
             result["freeMemory"] = mem
             result["freeSwapMemory"] = swap
             return result
-        elif o.system.platformtype.isSolaris():
+        elif j.system.platformtype.isSolaris():
             try:
-                output = o.cmdtools.vmstat.getFreeMemory()
-            except RuntimeError, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError("Failed to retrieve used Memory on the system. Reason: [%s]"%ex.message)
+                output = j.cmdtools.vmstat.getFreeMemory()
+            except RuntimeError as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError("Failed to retrieve used Memory on the system. Reason: [%s]" % ex.message)
 
             output = output.strip()
             lines = output.split('\n')
@@ -465,7 +460,6 @@ class EnumerateResourcesCommand(CommandWrapper):
             result["freeSwapMemory"] = swap
             return result
 
-
     def getISCSITargets(self):
         """
         Retrieves target, name, and connections information for each ISCSI target
@@ -473,19 +467,18 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: list of dict{target:<>, name:<>, connections:<>}
         @return: target, name, and connections for each ISCSI target
         """
-        #Only supported on Solaris as iscsitadm vapp was only supported on Solaris (there is a dummy vapp version supported on all platforms)
-        if o.system.platformtype.isSolaris():
-            targets = o.cmdtools.iscsitadm.listTarget()
+        # Only supported on Solaris as iscsitadm vapp was only supported on Solaris (there is a dummy vapp version supported on all platforms)
+        if j.system.platformtype.isSolaris():
+            targets = j.cmdtools.iscsitadm.listTarget()
             toReturn = list()
-            for count in range(len(targets)/3):
-                target = targets[count*3]
-                name = targets[count*3+1]
-                connections = targets[count*3+2]
-                toReturn.append({'target':target.split(': ')[1], 'name':name.split(': ')[1], 'connections':connections.split(': ')[1]})
+            for count in range(len(targets) / 3):
+                target = targets[count * 3]
+                name = targets[count * 3 + 1]
+                connections = targets[count * 3 + 2]
+                toReturn.append({'target': target.split(': ')[1], 'name': name.split(': ')[1], 'connections': connections.split(': ')[1]})
             return tuple(toReturn)
         else:
             raise RuntimeError("Operation not supported on this platform")
-
 
     def getISCSIInitiators(self):
         """
@@ -494,20 +487,19 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: list of dict{target:<>, deviceName:<>}
         @return: target and deviceName for each ISCSI initiator
         """
-        #Only supported on Solaris as iscsiadm vapp was only supported on Solaris (there is a dummy vapp version supported on all platforms)
-        if o.system.platformtype.isSolaris():
-            initiators = o.cmdtools.iscsiadm.listTarget(None, True)
+        # Only supported on Solaris as iscsiadm vapp was only supported on Solaris (there is a dummy vapp version supported on all platforms)
+        if j.system.platformtype.isSolaris():
+            initiators = j.cmdtools.iscsiadm.listTarget(None, True)
             toReturn = list()
             for initiator in initiators.split('\n\n'):
                 if initiator:
                     initiatorFields = initiator.split('\n')
                     toReturn.append({
-                    'target' : initiatorFields[0].split(': ')[1],
-                    'name' : initiatorFields[8].split(': ')[1]})
+                                    'target': initiatorFields[0].split(': ')[1],
+                                    'name': initiatorFields[8].split(': ')[1]})
             return toReturn
         else:
             raise RuntimeError("Operation not supported on this platform")
-
 
     def getZPoolsInfo(self):
         """
@@ -516,11 +508,11 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: dict of dict's
         @return: name, size, used, availableSize, cap, and health for each zpool available on machine
         """
-        o.logger.log("Retrieving zpools information", 3)
-        if o.system.platformtype.isSolaris():
+        j.logger.log("Retrieving zpools information", 3)
+        if j.system.platformtype.isSolaris():
             columns = ['name', 'size', 'used', 'avialableSize', 'CAP', 'health']
-            records  = dict()
-            exitCode, output = o.cmdtools.zfs.zpool.getZpoolInfo()
+            records = dict()
+            exitCode, output = j.cmdtools.zfs.zpool.getZpoolInfo()
             lines = output.split('\n')
             for line in lines:
                 record = line.split('\t')
@@ -528,12 +520,11 @@ class EnumerateResourcesCommand(CommandWrapper):
                 dRecord = dict(zip(columns, record))
                 try:
                     records[dRecord['name']] = dRecord
-                except KeyError, ex:
-                    o.logger.log(ex.message, 3)
+                except KeyError as ex:
+                    j.logger.log(ex.message, 3)
             return records
         else:
             raise RuntimeError("Operation not supported on this platform")
-
 
     def getZFS(self):
         """
@@ -543,17 +534,16 @@ class EnumerateResourcesCommand(CommandWrapper):
         @return: zfs info
         """
 
-        o.logger.log("Retrieving available zfs file systems installed on the system", 3)
-        if o.system.platformtype.isSolaris():
+        j.logger.log("Retrieving available zfs file systems installed on the system", 3)
+        if j.system.platformtype.isSolaris():
             try:
-                output =  o.cmdtools.zfs.zfs.list()
-            except Exception, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError("Failed to retrieve ZFS filesystems installed on the system. Resaon: [%s]"%ex.message)
+                output = j.cmdtools.zfs.zfs.list()
+            except Exception as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError("Failed to retrieve ZFS filesystems installed on the system. Resaon: [%s]" % ex.message)
             return output
         else:
             raise RuntimeError("Operation not supported on this platform")
-
 
     def getZPoolStatus(self, zPool):
         """
@@ -561,20 +551,20 @@ class EnumerateResourcesCommand(CommandWrapper):
 
         @param zPool: Name for the zpool e.g. storagepoola
         """
-        if o.system.platformtype.isSolaris():
-            o.logger.log("Retrieving ZPool %s status"%zPool, 3)
+        if j.system.platformtype.isSolaris():
+            j.logger.log("Retrieving ZPool %s status" % zPool, 3)
             try:
-                output =  o.cmdtools.zfs.zpool.getStatus(zPool)
-            except Exception, ex:
-                o.logger.log(ex.message.message, 3)
-                raise RuntimeError("Failed to retrieve ZPool %(zPool)s status. Resaon: [%(reason)s]"%{'zPool': zPool, 'reason': ex.message})
+                output = j.cmdtools.zfs.zpool.getStatus(zPool)
+            except Exception as ex:
+                j.logger.log(ex.message.message, 3)
+                raise RuntimeError("Failed to retrieve ZPool %(zPool)s status. Resaon: [%(reason)s]" % {'zPool': zPool, 'reason': ex.message})
             inp = output[:-1]
             mirrors = list()
             disks = list()
             currentMirror = None
-            for i in range(6,len(inp)):
+            for i in range(6, len(inp)):
                 fields = inp[i].split()
-                if inp[i].find('mirror')>0:
+                if inp[i].find('mirror') > 0:
                     currentMirror = dict()
                     mirrors.append(currentMirror)
                     currentMirror['status'] = fields[1]
@@ -586,13 +576,12 @@ class EnumerateResourcesCommand(CommandWrapper):
                         disk['name'] = fields[0]
                         disk['status'] = fields[1]
                     else:
-                        disks.append({'name':fields[0], 'status':fields[1]})
-            return {'mirrors':mirrors, 'disks':disks, 'errors':output[-1].split(':')[1]}
+                        disks.append({'name': fields[0], 'status': fields[1]})
+            return {'mirrors': mirrors, 'disks': disks, 'errors': output[-1].split(':')[1]}
         else:
             raise RuntimeError("Operation not supported on this platform")
 
-
-    def checkFreeDiskStatus(self, fileSystemPath = '/', availablePercentage = 25, availableSizeLimit = 3):
+    def checkFreeDiskStatus(self, fileSystemPath='/', availablePercentage=25, availableSizeLimit=3):
         """
         Retrieves free spaces for fileSystems, if percentage of free space below availablePercentage param raise RuntimeWarning, if free size less than availableSizeLimit param raise RuntimeWarning
 
@@ -601,40 +590,41 @@ class EnumerateResourcesCommand(CommandWrapper):
         @param availableSizeLimit: size to use as reference to compare with free space on file system in GB
         """
         diskStatus = self.getFreeDiskStatus(fileSystemPath)
-        o.logger.log("Checking if more than %s disk space is available:"%availablePercentage, 3)
-        if int(diskStatus['deviceUsedPercentage']) > (100 - availablePercentage): #-1 to remove unit
-            raise RuntimeWarning('Less than %(availablePercentage)s percentage of disk space available on %(fileSystemPath)s'%{'availablePercentage':availablePercentage, 'fileSystemPath':fileSystemPath})
+        j.logger.log("Checking if more than %s disk space is available:" % availablePercentage, 3)
+        if int(diskStatus['deviceUsedPercentage']) > (100 - availablePercentage):  # -1 to remove unit
+            raise RuntimeWarning('Less than %(availablePercentage)s percentage of disk space available on %(fileSystemPath)s' %
+                                 {'availablePercentage': availablePercentage, 'fileSystemPath': fileSystemPath})
         else:
-            o.logger.log("OK", 3)
-        o.logger.log("Checking if more than %sGB disk space is available:"%availableSizeLimit, 3)
-        sizeavailable = float(diskStatus['deviceSize'])-float(diskStatus['deviceUsed'])
+            j.logger.log("OK", 3)
+        j.logger.log("Checking if more than %sGB disk space is available:" % availableSizeLimit, 3)
+        sizeavailable = float(diskStatus['deviceSize']) - float(diskStatus['deviceUsed'])
         if sizeavailable < availableSizeLimit:
-            raise RuntimeWarning('Less than %(availableSizeLimit)s disk space available on %(fileSystemPath)s'%{'availableSizeLimit':availableSizeLimit, 'fileSystemPath':fileSystemPath})
+            raise RuntimeWarning('Less than %(availableSizeLimit)s disk space available on %(fileSystemPath)s' %
+                                 {'availableSizeLimit': availableSizeLimit, 'fileSystemPath': fileSystemPath})
         else:
-            o.logger.log("OK", 3)
+            j.logger.log("OK", 3)
 
-
-    def getFreeDiskStatus(self, fileSystemPath = '/'):
+    def getFreeDiskStatus(self, fileSystemPath='/'):
         """
         Retrieves device size, percentage memory used, available size, device capacity
 
         @param fileSystemPath: file system path for the file system
         """
-        diskpattern = re.compile('^(?P<devicepath>[a-z0-9/]+)\s+(?P<devicesize>[\w.]+)\s+(?P<deviceused>[\w.]+)\s+(?P<deviceavailable>[\w.]+)\s+(?P<deviceusagepercentage>[\w.%]+)\s+.*$')
-        o.logger.log("Retrieving disk status", 3)
+        diskpattern = re.compile(
+            '^(?P<devicepath>[a-z0-9/]+)\s+(?P<devicesize>[\w.]+)\s+(?P<deviceused>[\w.]+)\s+(?P<deviceavailable>[\w.]+)\s+(?P<deviceusagepercentage>[\w.%]+)\s+.*$')
+        j.logger.log("Retrieving disk status", 3)
         try:
-            output = o.cmdtools.df.getFreeDiskSpace()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to get free disk space for filesystem %s"%fileSystemPath)
+            output = j.cmdtools.df.getFreeDiskSpace()
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to get free disk space for filesystem %s" % fileSystemPath)
         diskstate = output.splitlines()[1]
         match = diskpattern.match(diskstate)
         if match:
             return {'totalSize': match.group('devicesize')[:-1],
-            'usedPercentage': match.group('deviceusagepercentage')[:-1],
-            'usedSize': match.group('deviceused')[:-1],
-            'availableSize': match.group('deviceavailable')[:-1]}
-
+                    'usedPercentage': match.group('deviceusagepercentage')[:-1],
+                    'usedSize': match.group('deviceused')[:-1],
+                    'availableSize': match.group('deviceavailable')[:-1]}
 
     def getCPUsProcessState(self):
         """
@@ -643,23 +633,22 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: dict
         @return: user process time, low system priority process time, high system priority process time, idle process time
         """
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
             cpusInfo = dict()
-            cpusStatus = o.cmdtools.proc.getCPUSpecifications()
+            cpusStatus = j.cmdtools.proc.getCPUSpecifications()
             pattern = re.compile('^(?P<cpuId>cpu[\d]*)\s+(?P<user>[\d]*)\s+(?P<systemLow>[\d]*)\s+(?P<systemHigh>[\d]*)\s+(?P<idle>[\d]*).*')
             for field in cpusStatus.split('\n'):
                 match = pattern.match(field)
                 if match:
                     cpusInfo[match.group('cpuId')] = {'user': int(match.group('user')),
-                               'systemLow': int(match.group('systemLow')),
-                               'systemHigh': int(match.group('systemHigh')),
-                               'idle': int(match.group('idle'))}
+                                                      'systemLow': int(match.group('systemLow')),
+                                                      'systemHigh': int(match.group('systemHigh')),
+                                                      'idle': int(match.group('idle'))}
             return cpusInfo
         else:
             raise RuntimeError("Operation not supported on this platform")
 
-
-    def getCPUUsage(self, delay = 3):
+    def getCPUUsage(self, delay=3):
         """
         Retrieves CPU usage percentage for all CPUs, and for each CPU
 
@@ -667,34 +656,35 @@ class EnumerateResourcesCommand(CommandWrapper):
         @rtype: dict
         @return: CPU usage percentage
         """
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
             try:
-                #take two reading to calculate CPU usage in that period
+                # take two reading to calculate CPU usage in that period
                 cpusInfo1 = self.getCPUsProcessState()
                 time.sleep(delay)
                 cpusInfo2 = self.getCPUsProcessState()
-            except RuntimeError, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError("Failed to retrieve CPU usage on the system. Reason: [%s]"%ex.message)
+            except RuntimeError as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError("Failed to retrieve CPU usage on the system. Reason: [%s]" % ex.message)
             cpusPercentage = dict()
             for cpuId in cpusInfo1.keys():
                 if cpuId == 'cpu':
                     cpuIdName = 'average'
                 else:
                     cpuIdName = cpuId
-                busyTime = cpusInfo2[cpuId]['user'] + cpusInfo2[cpuId]['systemLow'] + cpusInfo2[cpuId]['systemHigh'] - ( cpusInfo1[cpuId]['user'] + cpusInfo1[cpuId]['systemLow'] + cpusInfo1[cpuId]['systemHigh'])
+                busyTime = cpusInfo2[cpuId]['user'] + cpusInfo2[cpuId]['systemLow'] + cpusInfo2[cpuId][
+                    'systemHigh'] - (cpusInfo1[cpuId]['user'] + cpusInfo1[cpuId]['systemLow'] + cpusInfo1[cpuId]['systemHigh'])
                 idleTime = cpusInfo2[cpuId]['idle'] - cpusInfo1[cpuId]['idle']
                 if not busyTime and not idleTime:
                     cpusPercentage[cpuIdName] = 0.0
                     continue
-                cpusPercentage[cpuIdName] = round(100 * busyTime/(busyTime + idleTime))
+                cpusPercentage[cpuIdName] = round(100 * busyTime / (busyTime + idleTime))
             return cpusPercentage
-        elif o.system.platformtype.isSolaris():
+        elif j.system.platformtype.isSolaris():
             try:
-                cpusInfo = o.cmdtools.mpstat.getCPUsInfo()
-            except RuntimeError, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError("Failed to retrieve CPU usage on the system. Reason: [%s]"%ex.message)
+                cpusInfo = j.cmdtools.mpstat.getCPUsInfo()
+            except RuntimeError as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError("Failed to retrieve CPU usage on the system. Reason: [%s]" % ex.message)
             cpusPercentage = dict()
             total = 0.0
             cpuInfoEntries = cpusInfo.split('\n')[1:]
@@ -702,18 +692,17 @@ class EnumerateResourcesCommand(CommandWrapper):
             for cpuEntry in cpuInfoEntries:
                 if cpuEntry:
                     cpuFields = cpuEntry.split()
-                    cpuId = 'cpu'+str(cpuFields[0])
+                    cpuId = 'cpu' + str(cpuFields[0])
                     cpusPercentage[cpuId] = 100 - round(float(cpuFields[15]))
                     total += cpusPercentage[cpuId]
                     cpuCount += 1
             if not cpuCount:
                 cpusPercentage['average'] = 0.0
             else:
-                cpusPercentage['average'] = round(total/cpuCount)
+                cpusPercentage['average'] = round(total / cpuCount)
             return cpusPercentage
         else:
             raise RuntimeError("Operation not supported on this platform")
-
 
     def getHypervisorType(self):
         """
@@ -723,18 +712,17 @@ class EnumerateResourcesCommand(CommandWrapper):
         @return: Hypervisor type
         """
         hypervisorType = HypervisorsType.NOHYPERVISOR
-        #kernelName = o.cmdtools.uname.getKernelName()
-        if o.system.platformtype.isXen():
+        #kernelName = j.cmdtools.uname.getKernelName()
+        if j.system.platformtype.isXen():
             hypervisorType = HypervisorsType.XEN
         else:
-            if o.system.platformtype.isSolaris():
-                systemModules = o.cmdtools.modinfo.listModules()
-            elif o.system.platformtype.isVirtualBox():
+            if j.system.platformtype.isSolaris():
+                systemModules = j.cmdtools.modinfo.listModules()
+            elif j.system.platformtype.isVirtualBox():
                 hypervisorType = HypervisorsType.VBOX
-            elif o.system.platformtype.isESX():
+            elif j.system.platformtype.isESX():
                 hypervisorType = HypervisorsType.VMWARE
         return hypervisorType
-
 
     def getVMachines(self):
         """
@@ -751,7 +739,6 @@ class EnumerateResourcesCommand(CommandWrapper):
         else:
             return dict()
 
-
     def _getXenVMachinesUtilization(self):
         """
         Retrieves CPU, memory Utilization for each machine in VMachines
@@ -760,22 +747,22 @@ class EnumerateResourcesCommand(CommandWrapper):
         """
         vmachines = dict()
         try:
-            status = o.cmdtools.xentop.getVMStatus()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve vmachines utilization statistics for Xen. Reason: [%s]"%ex.message)
-        except AttributeError, ex:
-            o.logger.log(ex.message, 3)
-            raise AttributeError("Unsupported platform or proper extension not installed. Reason: [%s]"%ex.message)
+            status = j.cmdtools.xentop.getVMStatus()
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve vmachines utilization statistics for Xen. Reason: [%s]" % ex.message)
+        except AttributeError as ex:
+            j.logger.log(ex.message, 3)
+            raise AttributeError("Unsupported platform or proper extension not installed. Reason: [%s]" % ex.message)
         machineStatus = self._getXenVMachinesStatus()
-        pattern = re.compile('\s*(?P<domainName>[\w.]+)\s+(?P<state>.{6})\s+(?P<cpuTime>[\d.]+)\s+(?P<cpuPercentage>[\d.]+)\s+(?P<memory>[\d.]+)\s+(?P<memoryPercentage>[\d.]+)\s+.*')
+        pattern = re.compile(
+            '\s*(?P<domainName>[\w.]+)\s+(?P<state>.{6})\s+(?P<cpuTime>[\d.]+)\s+(?P<cpuPercentage>[\d.]+)\s+(?P<memory>[\d.]+)\s+(?P<memoryPercentage>[\d.]+)\s+.*')
         for vmField in status.split('\n'):
             match = pattern.match(vmField)
             if match:
                 name = match.group('domainName')
                 vmachines[name] = {'cpuUsage': match.group('cpuPercentage'), 'memUsage': match.group('memoryPercentage'), 'status': machineStatus[name]}
         return vmachines
-
 
     def _getXenVMachinesStatus(self):
         """
@@ -789,7 +776,6 @@ class EnumerateResourcesCommand(CommandWrapper):
             vMachinesStatus[machine['name_label']] = machine['power_state']
         return vMachinesStatus
 
-
     def _getVBoxMachinesUtilization(self):
         """
         Retrieves Vbox vmachines cpu and memory usage
@@ -798,27 +784,26 @@ class EnumerateResourcesCommand(CommandWrapper):
         @return: cpu and memorty usage of each vmachine currentlly running on vbox
         """
         result = dict()
-        if o.system.platformtype.isLinux():
+        if j.system.platformtype.isLinux():
             options = 'aux'
-        elif o.system.platformtype.isSolaris():
+        elif j.system.platformtype.isSolaris():
             options = 'af -o pid,pcpu,pmem,comm'
         try:
-            output = o.cmdtools.ps.getVBoxRunningMachinesStat(options)
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve vmachines statistics. Reason: [%s]"%ex.message)
+            output = j.cmdtools.ps.getVBoxRunningMachinesStat(options)
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve vmachines statistics. Reason: [%s]" % ex.message)
         lines = output.split('\n')[:-1]
         for line in lines:
             vmachineInfo, vmachineName = self._processVboxOutput(line)
             status = 'unknown'
             try:
                 status = q.hypervisors.manage.virtualbox.getMachineStatus(vmachineName).value
-            except (ValueError, AttributeError), ex:
-                o.logger.log(ex.message, 3)
-            vmachineInfo['status'] =  status
+            except (ValueError, AttributeError) as ex:
+                j.logger.log(ex.message, 3)
+            vmachineInfo['status'] = status
             result[vmachineName] = vmachineInfo
         return result
-
 
     def _processVboxOutput(self, output):
             """
@@ -829,20 +814,19 @@ class EnumerateResourcesCommand(CommandWrapper):
             """
             vmachineInfo = dict()
             parts = output.split()
-            if o.system.platformtype.isSolaris():
-                #This code was never tested on solaris machine since the setup of
-                #PMachine with solaris os and Virtualbox hypervisor is not avialable at the moment
+            if j.system.platformtype.isSolaris():
+                # This code was never tested on solaris machine since the setup of
+                # PMachine with solaris os and Virtualbox hypervisor is not avialable at the moment
                 vmachineName = parts[5]
                 vmachineInfo['cpuUsage'] = parts[1]
                 vmachineInfo['memUsage'] = parts[2]
-            elif o.system.platformtype.isLinux():
+            elif j.system.platformtype.isLinux():
                 vmachineName = parts[12]
                 vmachineInfo['cpuUsage'] = parts[2]
                 vmachineInfo['memUsage'] = parts[3]
             return vmachineInfo, vmachineName
 
-
-    def getNetworkStatistics(self, delay = 2):
+    def getNetworkStatistics(self, delay=2):
         """
         Retrieves network statistics, tx, rx, bw... for each real nic
 
@@ -854,8 +838,8 @@ class EnumerateResourcesCommand(CommandWrapper):
 
         while(retryCount < 5):
             try:
-                #this method is only supported on Linux as all CPUNodes have Linux as platform
-                if o.system.platformtype.isLinux() or o.system.platformtype.isESX():
+                # this method is only supported on Linux as all CPUNodes have Linux as platform
+                if j.system.platformtype.isLinux() or j.system.platformtype.isESX():
                     networkStatistic = dict()
                     for nicFields in self.getNics():
                         nicName = nicFields[0]
@@ -866,13 +850,12 @@ class EnumerateResourcesCommand(CommandWrapper):
                     break
                 else:
                     raise RuntimeError("Operation not supported on this platform")
-            except NetworkCounterResetException, ex:
+            except NetworkCounterResetException as ex:
                 retryCount += 1
         else:
-            raise RuntimeError('Unable to retrieve VMachines network statistics') #this condition should never be reached
+            raise RuntimeError('Unable to retrieve VMachines network statistics')  # this condition should never be reached
 
         return stats
-
 
     def getVMachinesNetworkStatistics(self, delay=2):
         """
@@ -887,26 +870,25 @@ class EnumerateResourcesCommand(CommandWrapper):
         while(retryCount < 5):
             try:
                 if type is HypervisorsType.XEN:
-                    stats =  self._getXenVMachinesNetworkStatistics(delay)
+                    stats = self._getXenVMachinesNetworkStatistics(delay)
                 if type is HypervisorsType.VBOX:
-                    stats =  self._getVBoxVMachinesNetworkStatistics(delay)
+                    stats = self._getVBoxVMachinesNetworkStatistics(delay)
                 break
-            except NetworkCounterResetException, ex:
+            except NetworkCounterResetException as ex:
                 retryCount += 1
         else:
-            raise RuntimeError('Unable to retrieve VMachines network statistics') #this condition should never be reached
+            raise RuntimeError('Unable to retrieve VMachines network statistics')  # this condition should never be reached
 
         return stats
 
-
-    def _getXenVMachinesNetworkStatistics(self, delay = 2):
+    def _getXenVMachinesNetworkStatistics(self, delay=2):
         """
         Retrieves current network statistics, tx, rx, bw... for XEN vMachine
 
         @param delay: period between any two consecutive network statistcs retreivals
         @return: dict{'machine': {<'interface'>:{statistics}}}
         """
-        if delay<1:
+        if delay < 1:
             delay = 1
         firstReading = self._getXenVmachineNetworkInfo()
         time.sleep(delay)
@@ -914,8 +896,7 @@ class EnumerateResourcesCommand(CommandWrapper):
 
         return self._getAllNicRatesfromTwoReadings(firstReading, secondReading, delay)
 
-
-    def _getAllNicRatesfromTwoReadings(self, firstReading, secondReading, delay = 2):
+    def _getAllNicRatesfromTwoReadings(self, firstReading, secondReading, delay=2):
         """
         Get the rate of Nics fields from Total readings( include severla machines and several Nics)
         """
@@ -926,23 +907,21 @@ class EnumerateResourcesCommand(CommandWrapper):
                 average[domain][nicName] = self._getNicRatefromTwoReadings(firstReading[domain][nicName], secondReading[domain][nicName], delay)
         return average
 
-
-    def _getNicRatefromTwoReadings(self, firstReading, secondReading, delay = 2):
+    def _getNicRatefromTwoReadings(self, firstReading, secondReading, delay=2):
         """
         Get the rate of Nics fields from two nic info readings
         """
-        average = {'rxBytes': self._getRate(firstReading['rxBytes'], secondReading['rxBytes'], 'bytes', delay) ,
-                    'rxPackets': self._getRate(firstReading['rxPackets'], secondReading['rxPackets'], 'pkts', delay) ,
-                    'rxErrors': self._getRate(firstReading['rxErrors'], secondReading['rxErrors'], 'err', delay) ,
-                    'rxDrop': self._getRate(firstReading['rxDrop'], secondReading['rxDrop'], 'drop', delay) ,
-                    'txBytes': self._getRate(firstReading['txBytes'], secondReading['txBytes'], 'bytes', delay) ,
-                    'txPackets': self._getRate(firstReading['txPackets'], secondReading['txPackets'], 'pkts', delay) ,
-                    'txErrors': self._getRate(firstReading['txErrors'], secondReading['txErrors'], 'err', delay) ,
-                    'txDrop': self._getRate(firstReading['txDrop'], secondReading['txDrop'], 'drop', delay) }
+        average = {'rxBytes': self._getRate(firstReading['rxBytes'], secondReading['rxBytes'], 'bytes', delay),
+                   'rxPackets': self._getRate(firstReading['rxPackets'], secondReading['rxPackets'], 'pkts', delay),
+                   'rxErrors': self._getRate(firstReading['rxErrors'], secondReading['rxErrors'], 'err', delay),
+                   'rxDrop': self._getRate(firstReading['rxDrop'], secondReading['rxDrop'], 'drop', delay),
+                   'txBytes': self._getRate(firstReading['txBytes'], secondReading['txBytes'], 'bytes', delay),
+                   'txPackets': self._getRate(firstReading['txPackets'], secondReading['txPackets'], 'pkts', delay),
+                   'txErrors': self._getRate(firstReading['txErrors'], secondReading['txErrors'], 'err', delay),
+                   'txDrop': self._getRate(firstReading['txDrop'], secondReading['txDrop'], 'drop', delay)}
         return average
 
-
-    def _getRate(self, firstValue, secondValue, unit, delay = 2):
+    def _getRate(self, firstValue, secondValue, unit, delay=2):
         """
         Get the rate by taking the difference of two readings having units appended to them; for example 45error, 23error would result 37error
         """
@@ -952,9 +931,8 @@ class EnumerateResourcesCommand(CommandWrapper):
         if secondValue < firstValue:
             raise NetworkCounterResetException('Network interface counter has been reset, retrying')
         if delay == 0:
-            raise ValueError, 'Delay value must be higher than 0'
-        return str(round((secondValue - firstValue)/delay)) + unit
-
+            raise ValueError('Delay value must be higher than 0')
+        return str(round((secondValue - firstValue) / delay)) + unit
 
     def _getXenVmachineNetworkInfo(self):
         """
@@ -965,15 +943,17 @@ class EnumerateResourcesCommand(CommandWrapper):
         """
         networkStatistics = dict()
         try:
-            vMNicsStatus = o.cmdtools.xentop.getVMNicsStatus()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve vmachines network statistics for Xen. Reason: [%s]"%ex.message)
-        except AttributeError, ex:
-            o.logger.log(ex.message, 3)
-            raise AttributeError("Unsupported platform or proper extension not installed. Reason: [%s]"%ex.message)
-        nicPattern = re.compile('\s*(?P<interfaceName>[\w.]+)\s+(?P<rx>[\w.:]+)\s+(?P<rxBytes>[\w.]+)\s+(?P<rxPackets>[\w.]+)\s+(?P<rxErrors>[\w.]+)\s+(?P<rxDrop>[\w.]+)\s+(?P<tx>[\w.:]+)\s+(?P<txBytes>[\w.]+)\s+(?P<txPackets>[\w.]+)\s+(?P<txErrors>[\w.]+)\s+(?P<txDrop>[\w.]+)\s*')
-        domainPattern = re.compile('\s*(?P<domainName>[\w.]+)\s+(?P<state>.{6})\s+(?P<cpuTime>[\d.]+)\s+(?P<cpuPercentage>[\d.]+)\s+(?P<memory>[\d.]+)\s+(?P<memoryPercentage>[\d.]+)\s+.*')
+            vMNicsStatus = j.cmdtools.xentop.getVMNicsStatus()
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve vmachines network statistics for Xen. Reason: [%s]" % ex.message)
+        except AttributeError as ex:
+            j.logger.log(ex.message, 3)
+            raise AttributeError("Unsupported platform or proper extension not installed. Reason: [%s]" % ex.message)
+        nicPattern = re.compile(
+            '\s*(?P<interfaceName>[\w.]+)\s+(?P<rx>[\w.:]+)\s+(?P<rxBytes>[\w.]+)\s+(?P<rxPackets>[\w.]+)\s+(?P<rxErrors>[\w.]+)\s+(?P<rxDrop>[\w.]+)\s+(?P<tx>[\w.:]+)\s+(?P<txBytes>[\w.]+)\s+(?P<txPackets>[\w.]+)\s+(?P<txErrors>[\w.]+)\s+(?P<txDrop>[\w.]+)\s*')
+        domainPattern = re.compile(
+            '\s*(?P<domainName>[\w.]+)\s+(?P<state>.{6})\s+(?P<cpuTime>[\d.]+)\s+(?P<cpuPercentage>[\d.]+)\s+(?P<memory>[\d.]+)\s+(?P<memoryPercentage>[\d.]+)\s+.*')
         currentDomain = None
         for line in vMNicsStatus.split('\n'):
             domainMatch = domainPattern.match(line)
@@ -982,41 +962,41 @@ class EnumerateResourcesCommand(CommandWrapper):
                 networkStatistics[currentDomain] = dict()
             else:
                 if not currentDomain:
-                    continue #neglect Domain-0 nics statistics to retrieve nics for each domain seperatly
+                    continue  # neglect Domain-0 nics statistics to retrieve nics for each domain seperatly
                 nicMatch = nicPattern.match(line)
                 if nicMatch:
-                    networkStatistics[currentDomain][nicMatch.group('interfaceName')]={'rxBytes': nicMatch.group('rxBytes'),'rxPackets': nicMatch.group('rxPackets'),
-                                                                                        'rxErrors': nicMatch.group('rxErrors'), 'rxDrop': nicMatch.group('rxDrop'),
-                                                                                        'txBytes': nicMatch.group('txBytes'), 'txPackets': nicMatch.group('txPackets'),
-                                                                                        'txErrors': nicMatch.group('txErrors'), 'txDrop': nicMatch.group('txDrop')}
+                    networkStatistics[currentDomain][nicMatch.group(
+                        'interfaceName')] = {'rxBytes': nicMatch.group('rxBytes'), 'rxPackets': nicMatch.group('rxPackets'),
+                                             'rxErrors': nicMatch.group('rxErrors'), 'rxDrop': nicMatch.group('rxDrop'),
+                                             'txBytes': nicMatch.group('txBytes'), 'txPackets': nicMatch.group('txPackets'),
+                                             'txErrors': nicMatch.group('txErrors'), 'txDrop': nicMatch.group('txDrop')}
         return networkStatistics
 
-
-    def _getNicStatistics(self, interfaceName, delay = 2):
+    def _getNicStatistics(self, interfaceName, delay=2):
         """
         Retrieve nic statistic for given interface name
 
         @param interfaceName: name of the interface
         @param delay: period in seconds between any two consecutive network statistcs retreivals
         """
-        if o.system.platformtype.isLinux() or o.system.platformtype.isESX(): #this method is only supported on Linux as all CPUNodes have Linux as platform
+        if j.system.platformtype.isLinux() or j.system.platformtype.isESX():  # this method is only supported on Linux as all CPUNodes have Linux as platform
             nicStatistics = dict()
             if self._isRealNic(interfaceName):
                 try:
-                    nicInfo = o.cmdtools.ifconfig.getInterfaceInfo(interfaceName)
+                    nicInfo = j.cmdtools.ifconfig.getInterfaceInfo(interfaceName)
                     firstReading = self._parseInterfaceInfo(nicInfo)
                     time.sleep(delay)
-                    nicInfo = o.cmdtools.ifconfig.getInterfaceInfo(interfaceName)
+                    nicInfo = j.cmdtools.ifconfig.getInterfaceInfo(interfaceName)
                     secondReading = self._parseInterfaceInfo(nicInfo)
                     nicStatistics = self._getNicRatefromTwoReadings(firstReading, secondReading, delay)
-                except RuntimeError, ex:
-                    o.logger.log(ex.message, 3)
-                    raise RuntimeError("Failed to retrieve network statistics for nic %(nic)s. Reason: [%(reason)s]"%{'nic':interfaceName, 'reason':ex.message})
+                except RuntimeError as ex:
+                    j.logger.log(ex.message, 3)
+                    raise RuntimeError("Failed to retrieve network statistics for nic %(nic)s. Reason: [%(reason)s]" % {
+                                       'nic': interfaceName, 'reason': ex.message})
 
             return nicStatistics
         else:
             raise RuntimeError("Operation not supported on this platform")
-
 
     def _isRealNic(self, interfaceName):
         """
@@ -1027,16 +1007,15 @@ class EnumerateResourcesCommand(CommandWrapper):
         """
         isReal = False
         try:
-            interfaceDriver = o.cmdtools.ethtool.getInterfaceDriver(interfaceName)
+            interfaceDriver = j.cmdtools.ethtool.getInterfaceDriver(interfaceName)
             driverMatch = re.match('\s*driver:\s(?P<driver>[\w]*)\n.*', interfaceDriver)
             if driverMatch:
                 driver = driverMatch.group('driver')
                 isReal = driver not in ('bridge', 'tun')
-        except RuntimeError, ex:
-            pass #in some cases of virtual interfaces ethtools raises an error
+        except RuntimeError as ex:
+            pass  # in some cases of virtual interfaces ethtools raises an error
 
         return isReal
-
 
     def _getVBoxVMNetworkInterfaces(self, machineName):
         """
@@ -1049,23 +1028,24 @@ class EnumerateResourcesCommand(CommandWrapper):
         """
         try:
             machineInfo = q.hypervisors.cmdtools.virtualbox.machineConfig.showvminfo(machineName)
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve the attached network interface to machine %(machine)s. Reason: [%(reason)s]"%{'machine':machineName, 'reason':ex.message})
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve the attached network interface to machine %(machine)s. Reason: [%(reason)s]" % {
+                               'machine': machineName, 'reason': ex.message})
         interfaces = list()
         for adapter in machineInfo['networkAdapters']:
             if adapter['enabled']:
                 interfaces.append(adapter['hostInterface'])
-        o.logger.log("Found network interfaces [%s] on machine [%s]"%(interfaces, machineName), 3)
+        j.logger.log("Found network interfaces [%s] on machine [%s]" % (interfaces, machineName), 3)
         return interfaces
-
 
     def _parseInterfaceInfo(self, interfaceInfoString):
         """
         Retrieves rxBytes, rxPackets, rxErrors, rxDrop, txBytes, txPackets, txErrors, txDrop for ifconfig nic output
         """
 
-        nicPattern = re.compile('\s*(?P<interfaceName>[\w.]+)\s+.*RX\s+packets:(?P<rxpackets>[0-9]+)\s+errors:(?P<rxerrors>[0-9]+)\s+dropped:(?P<rxdropped>[0-9]+).*TX\s+packets:(?P<txpackets>[0-9]+)\s+errors:(?P<txerrors>[0-9]+)\s+dropped:(?P<txdropped>[0-9]+).*RX\s+bytes:(?P<rxbytes>[0-9]+).*TX\s+bytes:(?P<txbytes>[0-9]+)\s+.*', re.DOTALL)
+        nicPattern = re.compile(
+            '\s*(?P<interfaceName>[\w.]+)\s+.*RX\s+packets:(?P<rxpackets>[0-9]+)\s+errors:(?P<rxerrors>[0-9]+)\s+dropped:(?P<rxdropped>[0-9]+).*TX\s+packets:(?P<txpackets>[0-9]+)\s+errors:(?P<txerrors>[0-9]+)\s+dropped:(?P<txdropped>[0-9]+).*RX\s+bytes:(?P<rxbytes>[0-9]+).*TX\s+bytes:(?P<txbytes>[0-9]+)\s+.*', re.DOTALL)
         nicMatch = nicPattern.match(interfaceInfoString)
         statistics = dict()
         if nicMatch:
@@ -1075,7 +1055,6 @@ class EnumerateResourcesCommand(CommandWrapper):
                           'txErrors': nicMatch.group('txerrors'), 'txDrop': nicMatch.group('txdropped')}
         return statistics
 
-
     def _getVBoxVMachinesNetworkInfo(self):
         """
         Retrieves network statistics, tx, rx, bw... for VBox vMachine
@@ -1083,26 +1062,25 @@ class EnumerateResourcesCommand(CommandWrapper):
         @return: dict{'machine': {<'interface'>:{statistics}}
         """
 
-        #The returned rx bytes and tx bytes are reversed due to VBOX networking tunneling used to virtualized networking facilities for VBox machines e.g:
+        # The returned rx bytes and tx bytes are reversed due to VBOX networking tunneling used to virtualized networking facilities for VBox machines e.g:
         # 'rxBytes': '1000bytes' means that the transmitted bytes rate are 1000 bytes
         networkStatistics = dict()
         try:
             machines = q.hypervisors.manage.virtualbox.cmdb.machines.keys()
-        except (AttributeError,RuntimeError), ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieves network statistics for VBox. Reason: [%(reason)s]"%{'reason':ex.message})
+        except (AttributeError, RuntimeError) as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieves network statistics for VBox. Reason: [%(reason)s]" % {'reason': ex.message})
         for machine in machines:
             interfaces = self._getVBoxVMNetworkInterfaces(machine)
             interfaceDict = dict()
             for interface in interfaces:
-                interfaceInfo = o.cmdtools.ifconfig.getInterfaceInfo(interface)
+                interfaceInfo = j.cmdtools.ifconfig.getInterfaceInfo(interface)
                 statistics = self._parseInterfaceInfo(interfaceInfo)
                 interfaceDict[interface] = statistics
             networkStatistics[machine] = interfaceDict
         return networkStatistics
 
-
-    def _getVBoxVMachinesNetworkStatistics(self, delay = 2):
+    def _getVBoxVMachinesNetworkStatistics(self, delay=2):
         """
         Retrieves current network statistics, tx, rx, bw... for VBox vMachine
 
@@ -1115,7 +1093,7 @@ class EnumerateResourcesCommand(CommandWrapper):
         time.sleep(delay)
         secondReading = self._getVBoxVMachinesNetworkInfo()
         return self._getAllNicRatesfromTwoReadings(firstReading, secondReading, delay)
-    
+
     def _calculatePhysicalSizeOfRaid(self, devices):
         """
         Calculate the RAID physical size of total used partitions
@@ -1126,18 +1104,18 @@ class EnumerateResourcesCommand(CommandWrapper):
         size = 0.0
         for dev in devices:
             dev = dev.split('/')[-1]
-            dev,number = dev[:-1],dev[-1]
-            for part in [part for part in o.cmdtools.partitioninfo.infoParted(dev) if part['number'] == number]:
+            dev, number = dev[:-1], dev[-1]
+            for part in [part for part in j.cmdtools.partitioninfo.infoParted(dev) if part['number'] == number]:
                 unit = part['size'][-2:]
                 partSize = float(part['size'][:-2])
                 if unit == 'MB':
-                    partSize = partSize/1024
+                    partSize = partSize / 1024
                 size += partSize
-        return size*1024
-    
+        return size * 1024
+
     def _getDssBlkDevices(self, path='/dev/dssblk'):
         dssBlkDevices = []
-        if o.system.fs.exists(path):
-            _,devices = o.system.process.execute('ls %s'%path)
+        if j.system.fs.exists(path):
+            _, devices = j.system.process.execute('ls %s' % path)
             dssBlkDevices = devices.splitlines()
         return dssBlkDevices

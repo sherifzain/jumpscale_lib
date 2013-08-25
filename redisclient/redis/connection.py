@@ -28,6 +28,7 @@ SYM_LF = b('\n')
 
 
 class PythonParser(object):
+
     "Plain Python parsing class"
     MAX_READ_LENGTH = 1000000
     encoding = None
@@ -142,7 +143,9 @@ class PythonParser(object):
 
 
 class HiredisParser(object):
+
     "Parser class for connections using Hiredis"
+
     def __init__(self):
         if not hiredis_available:
             raise RedisError("Hiredis is not installed")
@@ -195,7 +198,9 @@ else:
 
 
 class Connection(object):
+
     "Manages TCP communication to and from a Redis server"
+
     def __init__(self, host='localhost', port=6379, db=0, password=None,
                  socket_timeout=None, encoding='utf-8',
                  encoding_errors='strict', decode_responses=False,
@@ -334,6 +339,7 @@ class Connection(object):
 
 
 class UnixDomainSocketConnection(Connection):
+
     def __init__(self, path='', db=0, password=None,
                  socket_timeout=None, encoding='utf-8',
                  encoding_errors='strict', decode_responses=False,
@@ -369,7 +375,9 @@ class UnixDomainSocketConnection(Connection):
 
 # TODO: add ability to block waiting on a connection to be released
 class ConnectionPool(object):
+
     "Generic connection pool"
+
     def __init__(self, connection_class=Connection, max_connections=None,
                  **connection_kwargs):
         self.pid = os.getpid()

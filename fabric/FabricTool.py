@@ -1,8 +1,8 @@
-from OpenWizzy import o
+from JumpScale import j
 
-o.system.platform.ubuntu.check()
+j.system.platform.ubuntu.check()
 
-do=o.develtools.installer._do
+do = j.develtools.installer._do
 try:
     import fabric
 except:
@@ -19,37 +19,35 @@ import fabric.api
 # from fabric.api import show as fshow
 # from fabric.api import put as fput
 
+
 class FabricTool():
+
     def __init__(self):
-        self.do=o.develtools.installer._do
+        self.do = j.develtools.installer._do
         self.api = fabric.api
         self.setHost()
 
     def install(self):
-        codename,descr,id,release=o.system.platform.ubuntu.getVersion()
-        do=o.develtools.installer._do
-        
+        codename, descr, id, release = j.system.platform.ubuntu.getVersion()
+        do = j.develtools.installer._do
+
         do.execute("pip install fabric")
 
-    def setHost(self,host="localhost"):
-        self.api.env["host_string"]=host
+    def setHost(self, host="localhost"):
+        self.api.env["host_string"] = host
 
-    def setHosts(self,hosts=["localhost"]):
+    def setHosts(self, hosts=["localhost"]):
         """
         list of hosts on which the commands will work
         """
-        self.api.env.hosts=[hosts]
+        self.api.env.hosts = [hosts]
 
     def help(self):
-        C="""
+        C = """
 easiest way to use do:
-f=o.tools.fabric.api
+f=j.tools.fabric.api
 and then
 
 f.run(...)
         """
         print C
-        
-
-
-        

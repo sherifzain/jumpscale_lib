@@ -1,8 +1,10 @@
-from OpenWizzy import o
+from JumpScale import j
+
 
 class LogRotate(object):
+
     def start(self):
-        o.system.process.execute('logrotate /etc/logrotate.d/*')
+        j.system.process.execute('logrotate /etc/logrotate.d/*')
 
     def stop(self):
         pass

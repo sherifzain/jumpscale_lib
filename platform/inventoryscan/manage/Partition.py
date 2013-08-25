@@ -32,14 +32,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
 from PartitionRaid import PartitionRaid
 
+
 class Partition(CMDBSubObject):
-    
-    def __init__(self, type, number, start, end , size, mountpoint, used, label='', flag='', devices=''):
+
+    def __init__(self, type, number, start, end, size, mountpoint, used, label='', flag='', devices=''):
         self.type = type
         self.number = int(number)
         self.start = start
@@ -49,18 +50,17 @@ class Partition(CMDBSubObject):
         self.mountpoint = mountpoint
         self.label = label
         self.flag = flag
-        
-    type  = o.basetype.string(doc = 'partition type', allow_none = False)
-    flag  = o.basetype.string(doc = 'partition flag', allow_none = False)
-    number = o.basetype.integer(doc = 'partition number', allow_none = False)
-    start = o.basetype.string(doc = 'partition start location', allow_none = False)
-    end = o.basetype.string(doc = 'partition end location', allow_none = False)
-    size = o.basetype.integer(doc = 'partition size in MB', allow_none = False)
-    label = o.basetype.string(doc = 'partition label', allow_none = False)
-    used = o.basetype.float(doc = 'partition used size in GB', allow_none = False)
-    mountpoint = o.basetype.string(doc = 'partition mountpoint', allow_none = False)
-    raid = o.basetype.object(PartitionRaid, doc = 'raid information', allow_none = True, flag_dirty = True, default = None)
+
+    type = j.basetype.string(doc='partition type', allow_none=False)
+    flag = j.basetype.string(doc='partition flag', allow_none=False)
+    number = j.basetype.integer(doc='partition number', allow_none=False)
+    start = j.basetype.string(doc='partition start location', allow_none=False)
+    end = j.basetype.string(doc='partition end location', allow_none=False)
+    size = j.basetype.integer(doc='partition size in MB', allow_none=False)
+    label = j.basetype.string(doc='partition label', allow_none=False)
+    used = j.basetype.float(doc='partition used size in GB', allow_none=False)
+    mountpoint = j.basetype.string(doc='partition mountpoint', allow_none=False)
+    raid = j.basetype.object(PartitionRaid, doc='raid information', allow_none=True, flag_dirty=True, default=None)
 
     def __repr__(self):
-        return "type: %s, label: %s, flag: %s, number: %s, start: %s, end: %s, size: %sMB"%(self.type, self.label, self.flag, self.number, self.start, self.end, self.size)
-    
+        return "type: %s, label: %s, flag: %s, number: %s, start: %s, end: %s, size: %sMB" % (self.type, self.label, self.flag, self.number, self.start, self.end, self.size)

@@ -32,8 +32,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy.core.baseclasses.BaseEnumeration import EnumerationWithValue
+
+from JumpScale.core.baseclasses.BaseEnumeration import EnumerationWithValue
+
 
 class NicTypes(EnumerationWithValue):
     pass

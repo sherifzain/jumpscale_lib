@@ -1,6 +1,7 @@
 
 
 class SSHTool:
+
     def createClient(self,  host, username, password, timeout):
         '''Create a new SSHClient instance.
 
@@ -16,11 +17,11 @@ class SSHTool:
         @return: SSHClient instance
         @rtype: SSHClient
         '''
-        
+
         try:
             from remote.ssh.SSHClient import SSHClient
         except:
-            from OpenWizzy import o
-            o.system.platformtype.ubuntu.install("python-paramiko")
+            from JumpScale import j
+            j.system.platformtype.ubuntu.install("python-paramiko")
         from remote.ssh.SSHClient import SSHClient
         return SSHClient(host, username, password, timeout)

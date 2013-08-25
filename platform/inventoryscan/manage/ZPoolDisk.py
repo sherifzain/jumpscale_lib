@@ -32,15 +32,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class ZPoolDisk(CMDBSubObject):
 
-    status = o.basetype.string(doc = 'Status of disk', allow_none = False)
-    name = o.basetype.string(doc = 'Name of disk', allow_none = False)
-
+    status = j.basetype.string(doc='Status of disk', allow_none=False)
+    name = j.basetype.string(doc='Name of disk', allow_none=False)
 
     def __repr__(self):
-        return str({'status' : self.status, 'name' : self.name})
+        return str({'status': self.status, 'name': self.name})

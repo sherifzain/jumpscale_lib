@@ -32,19 +32,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class Disk(CMDBSubObject):
+
     """
     Basic information of a disk
     """
 
-    name  = o.basetype.string(doc = 'The disk\'s device name', allow_none = False)
-    size = o.basetype.integer(doc = 'size for the disk in Mega Bytes', flag_dirty = True)
-    partitions = o.basetype.list(doc = 'Partition(s) of the disk', flag_dirty = True, default= list())
-    
+    name = j.basetype.string(doc='The disk\'s device name', allow_none=False)
+    size = j.basetype.integer(doc='size for the disk in Mega Bytes', flag_dirty=True)
+    partitions = j.basetype.list(doc='Partition(s) of the disk', flag_dirty=True, default=list())
+
     def __repr__(self):
-        return "name: %(name)s, size: %(size)s"%{'name': self.name,'size': self.size}
-    
+        return "name: %(name)s, size: %(size)s" % {'name': self.name, 'size': self.size}

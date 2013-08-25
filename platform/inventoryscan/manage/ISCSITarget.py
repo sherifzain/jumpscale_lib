@@ -32,16 +32,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class ISCSITarget(CMDBSubObject):
 
-    name  = o.basetype.string(doc = 'ISCSI target name', allow_none = False)
-    target  = o.basetype.string(doc = 'ISCSI target path', allow_none = False)
-    connections = o.basetype.integer(doc = 'number of connections', allow_none = False, default = 0)
-
+    name = j.basetype.string(doc='ISCSI target name', allow_none=False)
+    target = j.basetype.string(doc='ISCSI target path', allow_none=False)
+    connections = j.basetype.integer(doc='number of connections', allow_none=False, default=0)
 
     def __repr__(self):
-        return "name: %(name)s, target: %(target)s, connections: %(connections)s"%{'name': self.name,'target': self.target, 'connections':self.connections}
+        return "name: %(name)s, target: %(target)s, connections: %(connections)s" % {'name': self.name, 'target': self.target, 'connections': self.connections}

@@ -1,8 +1,8 @@
 
-from OpenWizzy import o
+from JumpScale import j
 
-o.base.loader.makeAvailable(o, 'tools')
+j.base.loader.makeAvailable(j, 'tools')
 
 from FabricTool import FabricTool
 
-o.tools.fabric=FabricTool()
+j.tools.fabric = FabricTool()

@@ -32,19 +32,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
 
 
 class Nic(CMDBSubObject):
+
     """
     Basic information of a network interface card
     """
 
-    name  = o.basetype.string(doc = 'The network device\'s name')
-    macAddress  = o.basetype.string(doc = 'The network device MAC address', allow_none = True)
-    nicType     = o.basetype.enumeration(o.enumerators.NicTypes, doc = 'Type of network interface card')
+    name = j.basetype.string(doc='The network device\'s name')
+    macAddress = j.basetype.string(doc='The network device MAC address', allow_none=True)
+    nicType = j.basetype.enumeration(j.enumerators.NicTypes, doc='Type of network interface card')
 
     def __repr__(self):
-        return "name: %(name)s, macAddress: %(macAddress)s,nicType: %(nicType)s"%{'name':self.name, 'macAddress':self.macAddress, 'nicType':self.nicType}
+        return "name: %(name)s, macAddress: %(macAddress)s,nicType: %(nicType)s" % {'name': self.name, 'macAddress': self.macAddress, 'nicType': self.nicType}

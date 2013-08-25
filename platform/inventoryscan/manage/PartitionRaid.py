@@ -32,12 +32,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class PartitionRaid(CMDBSubObject):
-    
+
     def __init__(self, level, state, devices, activeDevices, failedDevices, totalDevices, raidDevices, spareDevices, backendsize):
         self.level = level
         self.state = state
@@ -48,24 +49,22 @@ class PartitionRaid(CMDBSubObject):
         self.raidDevices = int(raidDevices)
         self.spareDevices = int(spareDevices)
         self.backendsize = int(backendsize)
-    
-    activeDevices = o.basetype.integer(doc = 'active devices', allow_none = False)
-    failedDevices = o.basetype.integer(doc = 'failed devices', allow_none = False)
-    totalDevices  = o.basetype.integer(doc = 'total devices', allow_none = False)
-    raidDevices   = o.basetype.integer(doc = 'raid devices', allow_none = False)
-    spareDevices  = o.basetype.integer(doc = 'spare devices', allow_none = False)
-    level         = o.basetype.string(doc = 'raid level', allow_none = False)
-    state         = o.basetype.string(doc = 'raid state', allow_none = False)
-    devices       = o.basetype.dictionary(doc = 'raid devices overview', allow_none = False)
-    backendsize   = o.basetype.integer(doc = 'total size of physical used partitions', allow_none = False)
+
+    activeDevices = j.basetype.integer(doc='active devices', allow_none=False)
+    failedDevices = j.basetype.integer(doc='failed devices', allow_none=False)
+    totalDevices = j.basetype.integer(doc='total devices', allow_none=False)
+    raidDevices = j.basetype.integer(doc='raid devices', allow_none=False)
+    spareDevices = j.basetype.integer(doc='spare devices', allow_none=False)
+    level = j.basetype.string(doc='raid level', allow_none=False)
+    state = j.basetype.string(doc='raid state', allow_none=False)
+    devices = j.basetype.dictionary(doc='raid devices overview', allow_none=False)
+    backendsize = j.basetype.integer(doc='total size of physical used partitions', allow_none=False)
 
     def __repr__(self):
-        return "activeDevices: %s, failedDevices: %s, totalDevices: %s, raidDevices: %s, spareDevices: %s, level: %s, state: %s"%(self.activeDevices,
-                                                                                                                                  self.failedDevices,
-                                                                                                                                  self.totalDevices,
-                                                                                                                                  self.raidDevices,
-                                                                                                                                  self.spareDevices,
-                                                                                                                                  self.level,
-                                                                                                                                  self.state)
-                                                                                                         
-    
+        return "activeDevices: %s, failedDevices: %s, totalDevices: %s, raidDevices: %s, spareDevices: %s, level: %s, state: %s" % (self.activeDevices,
+                                                                                                                                    self.failedDevices,
+                                                                                                                                    self.totalDevices,
+                                                                                                                                    self.raidDevices,
+                                                                                                                                    self.spareDevices,
+                                                                                                                                    self.level,
+                                                                                                                                    self.state)

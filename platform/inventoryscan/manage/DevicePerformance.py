@@ -32,22 +32,22 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
 
 
 class DevicePerformance(CMDBSubObject):
+
     """
     Performance info for device
     """
 
-    cpuUsage  = o.basetype.dictionary(doc = 'Percentage of CPU Usage', flag_dirty = True, allow_none = False, default = dict())
-    freeMemory = o.basetype.float(doc = 'Free memory', flag_dirty = True, allow_none = False, default = 0.0)
-    swapMemorySize = o.basetype.integer(doc = 'Swap size', flag_dirty = True, allow_none = False, default = 0)
-    networkStatistics  = o.basetype.dictionary(doc = 'network statistics for each real nic', flag_dirty = True, allow_none = False, default = dict())
-    timeStamp = o.basetype.string(doc = 'time of performance data collection', flag_dirty = True, allow_none = False, default = '')
-
+    cpuUsage = j.basetype.dictionary(doc='Percentage of CPU Usage', flag_dirty=True, allow_none=False, default=dict())
+    freeMemory = j.basetype.float(doc='Free memory', flag_dirty=True, allow_none=False, default=0.0)
+    swapMemorySize = j.basetype.integer(doc='Swap size', flag_dirty=True, allow_none=False, default=0)
+    networkStatistics = j.basetype.dictionary(doc='network statistics for each real nic', flag_dirty=True, allow_none=False, default=dict())
+    timeStamp = j.basetype.string(doc='time of performance data collection', flag_dirty=True, allow_none=False, default='')
 
     def __repr__(self):
         return str({'cpuUsage': self.cpuUsage, 'freeMemory': self.freeMemory, 'swapMemorySize': self.swapMemorySize, 'networkStatistics': self.networkStatistics, 'timeStamp': self.timeStamp})

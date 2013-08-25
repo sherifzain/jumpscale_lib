@@ -1,5 +1,6 @@
-from OpenWizzy.core.config import ConfigManagementItem, ItemSingleClass,ItemGroupClass
-from OpenWizzy import o
+from JumpScale.core.config import ConfigManagementItem, ItemSingleClass, ItemGroupClass
+from JumpScale import j
+
 
 class AutoStopItem(ConfigManagementItem):
     CONFIGTYPE = "autostop"
@@ -14,6 +15,6 @@ class AutoStopItem(ConfigManagementItem):
 
     def show(self):
         params = dict(itemname=self.itemname, **self.params)
-        o.gui.dialog.message("%(order)d (%(itemname)s) - %(command)s" % params)
+        j.gui.dialog.message("%(order)d (%(itemname)s) - %(command)s" % params)
 
 AutoStop = ItemGroupClass(AutoStopItem)

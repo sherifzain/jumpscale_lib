@@ -32,24 +32,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class DeviceHypervisor(CMDBSubObject):
+
     """
     Hypervisor info if device has a Hypervisor installed
     """
-    o.cloud.cmdtools.inventoryScan
-    type = o.basetype.enumeration(o.enumerators.HypervisorsType, doc = 'type of hypervisor', allow_none = True, flag_dirty = True)
-    #, default = o.enumerators.HypervisorsType.XEN)
-    vmSatistics = o.basetype.dictionary(doc = 'vmName with CPU Load percentage, memory Usage percentage', flag_dirty = True, allow_none = False, default = dict())
-    timeStamp = o.basetype.string(doc = 'time of data collection', flag_dirty = True, allow_none = False, default = '')
-    vmNicSatistics = o.basetype.dictionary(doc = 'vmName Nics statistics', flag_dirty = True, allow_none = True, default = dict())
+    j.cloud.cmdtools.inventoryScan
+    type = j.basetype.enumeration(j.enumerators.HypervisorsType, doc='type of hypervisor', allow_none=True, flag_dirty=True)
+    #, default = j.enumerators.HypervisorsType.XEN)
+    vmSatistics = j.basetype.dictionary(
+        doc='vmName with CPU Load percentage, memory Usage percentage', flag_dirty=True, allow_none=False, default=dict())
+    timeStamp = j.basetype.string(doc='time of data collection', flag_dirty=True, allow_none=False, default='')
+    vmNicSatistics = j.basetype.dictionary(doc='vmName Nics statistics', flag_dirty=True, allow_none=True, default=dict())
 
     def __init__(self):
         CMDBSubObject.__init__(self)
-        self.type = o.enumerators.HypervisorsType.NOHYPERVISOR
+        self.type = j.enumerators.HypervisorsType.NOHYPERVISOR
 
     def __repr__(self):
-        return str({'type': self.type, 'vmSatistics': self.vmSatistics,'timeStamp': self.timeStamp, 'nicStatistics': self.vmNicSatistics})
+        return str({'type': self.type, 'vmSatistics': self.vmSatistics, 'timeStamp': self.timeStamp, 'nicStatistics': self.vmNicSatistics})

@@ -32,20 +32,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
 
 
 class DeviceOperatingSystem(CMDBSubObject):
+
     """
     Operating System related info for device
     """
 
-    runningProcesses  = o.basetype.list(doc = 'list of running processes', flag_dirty = True, allow_none = False, default = list())
-    nicAddresses = o.basetype.dictionary(doc = 'interface address, subnetMask, defaultRoute', flag_dirty = True, allow_none = False, default = list())
-    timeStamp = o.basetype.string(doc = 'time of data collection', flag_dirty = True, allow_none = False, default = '')
-
+    runningProcesses = j.basetype.list(doc='list of running processes', flag_dirty=True, allow_none=False, default=list())
+    nicAddresses = j.basetype.dictionary(doc='interface address, subnetMask, defaultRoute', flag_dirty=True, allow_none=False, default=list())
+    timeStamp = j.basetype.string(doc='time of data collection', flag_dirty=True, allow_none=False, default='')
 
     def __repr__(self):
-        return str({'numberOfRunningProcesses': len(self.runningProcesses),'timeStamp': self.timeStamp})
+        return str({'numberOfRunningProcesses': len(self.runningProcesses), 'timeStamp': self.timeStamp})

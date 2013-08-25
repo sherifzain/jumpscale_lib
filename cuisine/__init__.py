@@ -1,8 +1,8 @@
 
-from OpenWizzy import o
+from JumpScale import j
 
-o.base.loader.makeAvailable(o, 'tools')
+j.base.loader.makeAvailable(j, 'tools')
 
 from Cuisine import Cuisine
 
-o.tools.cuisine=Cuisine()
+j.tools.cuisine = Cuisine()

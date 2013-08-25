@@ -169,6 +169,7 @@ def parse_script(response, **options):
 
 
 class StrictRedis(object):
+
     """
     Implementation of the Redis protocol.
 
@@ -318,7 +319,7 @@ class StrictRedis(object):
         """
         shard_hint = kwargs.pop('shard_hint', None)
         with self.pipeline(True, shard_hint) as pipe:
-            while 1:
+            while True:
                 try:
                     if watches:
                         pipe.watch(*watches)
@@ -349,7 +350,7 @@ class StrictRedis(object):
         """
         return PubSub(self.connection_pool, shard_hint)
 
-    #### COMMAND EXECUTION AND PROTOCOL PARSING ####
+    # COMMAND EXECUTION AND PROTOCOL PARSING ####
     def execute_command(self, *args, **options):
         "Execute a command and return a parsed response"
         pool = self.connection_pool
@@ -372,7 +373,7 @@ class StrictRedis(object):
             return self.response_callbacks[command_name](response, **options)
         return response
 
-    #### SERVER INFORMATION ####
+    # SERVER INFORMATION ####
     def bgrewriteaof(self):
         "Tell the Redis server to rewrite the AOF file from data in memory."
         return self.execute_command('BGREWRITEAOF')
@@ -477,7 +478,7 @@ class StrictRedis(object):
             return self.execute_command("SLAVEOF", "NO", "ONE")
         return self.execute_command("SLAVEOF", host, port)
 
-    #### BASIC KEY COMMANDS ####
+    # BASIC KEY COMMANDS ####
     def append(self, key, value):
         """
         Appends the string ``value`` to the value at ``key``. If ``key``
@@ -732,7 +733,7 @@ class StrictRedis(object):
         warnings.warn(
             DeprecationWarning('Call UNWATCH from a Pipeline object'))
 
-    #### LIST COMMANDS ####
+    # LIST COMMANDS ####
     def blpop(self, keys, timeout=0):
         """
         LPOP a value off of the first non-empty list
@@ -930,7 +931,7 @@ class StrictRedis(object):
             pieces.append(store)
         return self.execute_command('SORT', *pieces)
 
-    #### SET COMMANDS ####
+    # SET COMMANDS ####
     def sadd(self, name, *values):
         "Add ``value(s)`` to set ``name``"
         return self.execute_command('SADD', name, *values)
@@ -1009,7 +1010,7 @@ class StrictRedis(object):
         args = list_or_args(keys, args)
         return self.execute_command('SUNIONSTORE', dest, *args)
 
-    #### SORTED SET COMMANDS ####
+    # SORTED SET COMMANDS ####
     def zadd(self, name, *args, **kwargs):
         """
         Set any number of score, element-name pairs to the key ``name``. Pairs
@@ -1209,7 +1210,7 @@ class StrictRedis(object):
             pieces.append(aggregate)
         return self.execute_command(*pieces)
 
-    #### HASH COMMANDS ####
+    # HASH COMMANDS ####
     def hdel(self, name, *keys):
         "Delete ``keys`` from hash ``name``"
         return self.execute_command('HDEL', name, *keys)
@@ -1342,7 +1343,9 @@ class StrictRedis(object):
         """
         return Script(self, script)
 
+
 class Redis(StrictRedis):
+
     """
     Provides backwards compatibility with older versions of redis-py that
     changed arguments to some commands to be more Pythonic, sane, or by
@@ -1427,6 +1430,7 @@ class Redis(StrictRedis):
 
 
 class PubSub(object):
+
     """
     PubSub provides publish, subscribe and listen support to Redis channels.
 
@@ -1434,6 +1438,7 @@ class PubSub(object):
     until a message arrives on one of the subscribed channels. That message
     will be returned and it's safe to start listening again.
     """
+
     def __init__(self, connection_pool, shard_hint=None):
         self.connection_pool = connection_pool
         self.shard_hint = shard_hint
@@ -1571,6 +1576,7 @@ class PubSub(object):
 
 
 class BasePipeline(object):
+
     """
     Pipelines provide a way to transmit multiple commands to the Redis server
     in one transmission.  This is convenient for batch processing, such as
@@ -1831,16 +1837,19 @@ class BasePipeline(object):
 
 
 class StrictPipeline(BasePipeline, StrictRedis):
+
     "Pipeline for the StrictRedis class"
     pass
 
 
 class Pipeline(BasePipeline, Redis):
+
     "Pipeline for the Redis class"
     pass
 
 
 class Script(object):
+
     "An executable LUA script object returned by ``register_script``"
 
     def __init__(self, registered_client, script):
@@ -1866,11 +1875,13 @@ class Script(object):
 
 
 class LockError(RedisError):
+
     "Errors thrown from the Lock"
     pass
 
 
 class Lock(object):
+
     """
     A shared, distributed Lock. Using Redis for locking allows the Lock
     to be shared across processes and/or machines.
@@ -1921,7 +1932,7 @@ class Lock(object):
         """
         sleep = self.sleep
         timeout = self.timeout
-        while 1:
+        while True:
             unixtime = int(mod_time.time())
             if timeout:
                 timeout_at = unixtime + timeout

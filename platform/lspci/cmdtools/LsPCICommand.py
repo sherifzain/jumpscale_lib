@@ -32,22 +32,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CommandWrapper import CommandWrapper
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CommandWrapper import CommandWrapper
 
 
 class LsPCICommand(CommandWrapper):
 
     _listComponents = "lspci -m"
 
-
     def listComponents(self):
         """
         List available PCI components
         """
         return self._executeCommand(LsPCICommand._listComponents)
-
 
     def _executeCommand(self, command):
         """
@@ -56,12 +54,13 @@ class LsPCICommand(CommandWrapper):
 
         @param command: command to execute
         """
-        o.logger.log("Executing command : %s"%command, 3)
-        #This check on the platform type is not supposed to happen, but it is implemented as a temp solution
-        #beside the dummpy vapps to solve the dependency per platform problem
-        if not o.system.platformtype.isLinux():
-            raise RuntimeError("Command [%s] not supported on [%s]"%(command, o.system.platformtype))
-        exitcode, output = o.system.process.execute('%s 2>&1'%command, outputToStdout=False, dieOnNonZeroExitCode=False)
+        j.logger.log("Executing command : %s" % command, 3)
+        # This check on the platform type is not supposed to happen, but it is implemented as a temp solution
+        # beside the dummpy vapps to solve the dependency per platform problem
+        if not j.system.platformtype.isLinux():
+            raise RuntimeError("Command [%s] not supported on [%s]" % (command, j.system.platformtype))
+        exitcode, output = j.system.process.execute('%s 2>&1' % command, outputToStdout=False, dieOnNonZeroExitCode=False)
         if exitcode:
-            raise RuntimeError('Command: %(command)s failed with exitcode %(exitcode)s. Output: %(output)s'%{'command':command, 'exitcode':exitcode, 'output':str(output)})
+            raise RuntimeError('Command: %(command)s failed with exitcode %(exitcode)s. Output: %(output)s' %
+                               {'command': command, 'exitcode': exitcode, 'output': str(output)})
         return output

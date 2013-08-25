@@ -32,22 +32,22 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class ZPool(CMDBSubObject):
 
-    name  = o.basetype.string(doc = 'Zpool name', allow_none = False)
-    CAP  = o.basetype.string(doc = 'Zpool capacity percentage', allow_none = False)
-    availableSize = o.basetype.string(doc = 'Size of the available storage', allow_none = False)
-    size = o.basetype.string(doc = 'Zpool overall size', allow_none = False)
-    used = o.basetype.string(doc = 'Size of the used storage', allow_none = False)
-    health = o.basetype.string(doc = 'Zpool health,e.g ONLINE, OFFLINE', allow_none = False)
-    mirrors = o.basetype.list(doc = 'List of available mirrors, their status and disks', allow_none = False, default = list())
-    disks = o.basetype.list(doc = 'List of all available disks, and their status', allow_none = False, default = list())
-    errors = o.basetype.string(doc = 'Zpool errors as returned by get status', allow_none = False)
-
+    name = j.basetype.string(doc='Zpool name', allow_none=False)
+    CAP = j.basetype.string(doc='Zpool capacity percentage', allow_none=False)
+    availableSize = j.basetype.string(doc='Size of the available storage', allow_none=False)
+    size = j.basetype.string(doc='Zpool overall size', allow_none=False)
+    used = j.basetype.string(doc='Size of the used storage', allow_none=False)
+    health = j.basetype.string(doc='Zpool health,e.g ONLINE, OFFLINE', allow_none=False)
+    mirrors = j.basetype.list(doc='List of available mirrors, their status and disks', allow_none=False, default=list())
+    disks = j.basetype.list(doc='List of all available disks, and their status', allow_none=False, default=list())
+    errors = j.basetype.string(doc='Zpool errors as returned by get status', allow_none=False)
 
     def __repr__(self):
-        return "name: %(name)s, CAP: %(CAP)s, availableSize: %(availablesize)s, Used: %(used)s, size: %(size)s, Health: %(health)s"%{'name': self.name, 'CAP': self.CAP, 'availablesize':self.availableSize, 'used':self.used, 'size': self.size, 'health': self.health}
+        return "name: %(name)s, CAP: %(CAP)s, availableSize: %(availablesize)s, Used: %(used)s, size: %(size)s, Health: %(health)s" % {'name': self.name, 'CAP': self.CAP, 'availablesize': self.availableSize, 'used': self.used, 'size': self.size, 'health': self.health}

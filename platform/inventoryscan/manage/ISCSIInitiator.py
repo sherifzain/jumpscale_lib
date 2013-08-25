@@ -32,15 +32,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class ISCSIInitiator(CMDBSubObject):
 
-    name  = o.basetype.string(doc = 'ISCSI initiator name', allow_none = False)
-    target  = o.basetype.string(doc = 'ISCSI initiator name target', allow_none = False)
-
+    name = j.basetype.string(doc='ISCSI initiator name', allow_none=False)
+    target = j.basetype.string(doc='ISCSI initiator name target', allow_none=False)
 
     def __repr__(self):
-        return "name: %(name)s, target: %(target)s"%{'name': self.name,'target': self.target}
+        return "name: %(name)s, target: %(target)s" % {'name': self.name, 'target': self.target}

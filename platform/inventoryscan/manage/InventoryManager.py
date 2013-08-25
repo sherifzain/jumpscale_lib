@@ -32,12 +32,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.ManagementConfiguration import ManagementConfiguration
-from OpenWizzy.core.baseclasses.ManagementApplication import CMDBLockMixin
 
-import time, re
+from JumpScale import j
+from JumpScale.core.baseclasses.ManagementConfiguration import ManagementConfiguration
+from JumpScale.core.baseclasses.ManagementApplication import CMDBLockMixin
+
+import time
+import re
 
 from Device import Device
 from Nic import Nic
@@ -54,6 +55,7 @@ import DeviceHypervisor
 
 
 class InventoryManager(ManagementConfiguration, CMDBLockMixin):
+
     """
     Exposes methods to retrieve machine info (CPU, mem, zfs, iscsi, ...)
 
@@ -71,7 +73,6 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         if self.cmdb.isDirty:
             self.cmdb.dirtyProperties.clear()
             self.cmdb.save()
-
 
     def scanDeviceResources(self):
         """
@@ -92,20 +93,18 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         self.getZPoolMirrorInfo()
         try:
             self.getHypervisorType()
-        except RuntimeError, ex:
-            pass #that exception is already logged and most probably means there is no hypervisor installed on machine
+        except RuntimeError as ex:
+            pass  # that exception is already logged and most probably means there is no hypervisor installed on machine
         self.getVMachinesStatistics()
         self.getNetworkStatistics()
         self.getVMachinesNetworkStatistics()
         self.save()
-
 
     def printDeviceResources(self):
         """
         If a scan is already done, just pretty prints the resources, otherwise print empty section headers and log an error
         """
         print self.cmdb
-
 
     def getDisks(self):
         """
@@ -114,10 +113,10 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         Create a disk instance for each disk on the system, populate the attributes and add it to the cmdb's hardDisks collection
         @return: cmdb.hardDisks
         """
-        disks = o.cloud.cmdtools.inventoryScan.getDisks()
+        disks = j.cloud.cmdtools.inventoryScan.getDisks()
         currentAvailableDisks = list()
         for name, value in disks.iteritems():
-            size = int(float(value['size'])*1024) if value['unit'] == 'GB' else int(float(value['size']))
+            size = int(float(value['size']) * 1024) if value['unit'] == 'GB' else int(float(value['size']))
             partitions = value['partitions']
             currentAvailableDisks.append(name)
             if name in self.cmdb.disks.keys():
@@ -151,8 +150,8 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
             if disk not in currentAvailableDisks:
                 del self.cmdb.disks[disk]
         self.cmdb.dirtyProperties.add('disks')
-        return disks      
-        
+        return disks
+
     def getNics(self):
         """
         Enumerate all the NICs present on the system, updating the cmdb object accordingly
@@ -160,9 +159,9 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         Create a Nic instance for each NIC on the system, populate the attributes and add it to the cmdb's networkInterfaceCards collection
         @return: cmdb.networkInterfaceCards
         """
-        nICs = o.cloud.cmdtools.inventoryScan.getNics()
+        nICs = j.cloud.cmdtools.inventoryScan.getNics()
         currentAvailableNICs = list()
-        #append added NICs to cmdb object
+        # append added NICs to cmdb object
         for interface, mAC, nICType in nICs:
             currentAvailableNICs.append(interface)
             if interface in self.cmdb.nics.keys():
@@ -175,13 +174,12 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
                 nIC.macAddress = mAC
                 nIC.nicType = nICType
                 self.cmdb.nics[interface] = nIC
-        #remove removed Nics from cmdb object
+        # remove removed Nics from cmdb object
         for nIC in self.cmdb.nics.keys():
             if nIC not in currentAvailableNICs:
                 del self.cmdb.nics[nIC]
         self.cmdb.dirtyProperties.add('nics')
         return tuple(self.cmdb.nics)
-
 
     def getMemoryInfo(self):
         """
@@ -189,10 +187,9 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
 
         @return cmdb.totalMemoryInMB
         """
-        memory = o.cloud.cmdtools.inventoryScan.getMemoryInfo()
+        memory = j.cloud.cmdtools.inventoryScan.getMemoryInfo()
         self.cmdb.totalMemoryInMB = memory
         return memory
-
 
     def getCPUInfo(self):
         """
@@ -201,10 +198,9 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         @rtype: tuple
         @return (numberOfCpus, numberOfCpuCores, totalCpuFrequency)
         """
-        output = o.cloud.cmdtools.inventoryScan.getCPUInfo()
+        output = j.cloud.cmdtools.inventoryScan.getCPUInfo()
         self.cmdb.numberOfCPUs, self.cmdb.numberOfCPUCores, self.cmdb.totalCPUFrequency = output
         return output
-
 
     def getZFSs(self):
         """
@@ -213,11 +209,11 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
 
         result = dict()
         try:
-            result = o.cloud.cmdtools.inventoryScan.getZFS()
+            result = j.cloud.cmdtools.inventoryScan.getZFS()
             self.cmdb.zFSList = list()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            #do not interrupt the call flow, simply log the exception as it can be Operation Not Supported on this platform
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            # do not interrupt the call flow, simply log the exception as it can be Operation Not Supported on this platform
         else:
             for key in result.keys():
                 zfs = ZFS.ZFS()
@@ -230,17 +226,16 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
                 self.cmdb.zFSList.append(zfs)
             return tuple(self.cmdb.zFSList)
 
-
     def getZPools(self):
         """
         Retrieves Zpools installed on the system
         """
         result = dict()
         try:
-            result = o.cloud.cmdtools.inventoryScan.getZPoolsInfo()
+            result = j.cloud.cmdtools.inventoryScan.getZPoolsInfo()
             self.cmdb.zPoolList = list()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
         else:
             for key in result.keys():
                 zPool = ZPool.ZPool()
@@ -254,25 +249,23 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
                 self.cmdb.zPoolList.append(zPool)
             return tuple(self.cmdb.zPoolList)
 
-
     def getISCSIInitiators(self):
         """
         Retreives ISCSI initiators
         """
         result = dict()
         try:
-            result = o.cloud.cmdtools.inventoryScan.getISCSIInitiators()
+            result = j.cloud.cmdtools.inventoryScan.getISCSIInitiators()
             self.cmdb.iSCSIInitiators = list()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
         else:
             for iSCSIInitiatorFields in result:
                 iSCSIInitiator = ISCSIInitiator.ISCSIInitiator()
-                iSCSIInitiator.name  = iSCSIInitiatorFields['name']
-                iSCSIInitiator.target  = iSCSIInitiatorFields['target']
+                iSCSIInitiator.name = iSCSIInitiatorFields['name']
+                iSCSIInitiator.target = iSCSIInitiatorFields['target']
                 self.cmdb.iSCSIInitiators.append(iSCSIInitiator)
             return tuple(self.cmdb.iSCSIInitiators)
-
 
     def getISCSITargets(self):
         """
@@ -280,45 +273,42 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         """
         result = dict()
         try:
-            result = o.cloud.cmdtools.inventoryScan.getISCSITargets()
+            result = j.cloud.cmdtools.inventoryScan.getISCSITargets()
             self.cmdb.iSCSITargets = list()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
         else:
             for iSCSITargetFields in result:
                 iSCSITarget = ISCSITarget.ISCSITarget()
-                iSCSITarget.name  = iSCSITargetFields['name']
-                iSCSITarget.target  = iSCSITargetFields['target']
-                iSCSITarget.connections  = int(iSCSITargetFields['connections'])
+                iSCSITarget.name = iSCSITargetFields['name']
+                iSCSITarget.target = iSCSITargetFields['target']
+                iSCSITarget.connections = int(iSCSITargetFields['connections'])
                 self.cmdb.iSCSITargets.append(iSCSITarget)
             return tuple(self.cmdb.iSCSITargets)
-
 
     def getCPUUsage(self):
         """
         Retrieves CPU usage
         """
         try:
-            self.cmdb.performance.cpuUsage = o.cloud.cmdtools.inventoryScan.getCPUUsage()
+            self.cmdb.performance.cpuUsage = j.cloud.cmdtools.inventoryScan.getCPUUsage()
             return self.cmdb.performance.cpuUsage
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve CPU usage. Reason: [%s]"%ex.message)
-
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve CPU usage. Reason: [%s]" % ex.message)
 
     def getMemoryUsage(self):
         """
         Retrieves memory usage
         """
         try:
-            data = o.cloud.cmdtools.inventoryScan.getFreeMemory()
+            data = j.cloud.cmdtools.inventoryScan.getFreeMemory()
             self.cmdb.performance.freeMemory = float(data['freeMemory'])
             self.cmdb.performance.swapMemorySize = data['freeSwapMemory']
             return data
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve memory usage. Reason: [%s]"%ex.message)
-
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve memory usage. Reason: [%s]" % ex.message)
 
     def getPerformanceInfo(self):
         """
@@ -330,37 +320,33 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         self.cmdb.performance.timeStamp = self._getCurrentTime()
         return self.cmdb.performance
 
-
     def getPCIBusComponents(self):
         """
         Retrieves PCI bus components
         """
         try:
-            self.cmdb.pCIBusComponents = list(o.cloud.cmdtools.inventoryScan.getPCIBusComponents())
+            self.cmdb.pCIBusComponents = list(j.cloud.cmdtools.inventoryScan.getPCIBusComponents())
             return tuple(self.cmdb.pCIBusComponents)
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
 
     def getRunningProcesses(self):
         """
         Retrieves currently running processes
         """
         try:
-            self.cmdb.os.runningProcesses = o.cloud.cmdtools.inventoryScan.getRunningProcesses()
+            self.cmdb.os.runningProcesses = j.cloud.cmdtools.inventoryScan.getRunningProcesses()
             self.cmdb.os.timeStamp = self._getCurrentTime()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError("Failed to retrieve running processes. Reason: [%s]"%ex.message)
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError("Failed to retrieve running processes. Reason: [%s]" % ex.message)
         return tuple(self.cmdb.os.runningProcesses)
-
 
     def _getCurrentTime(self):
         """
         Return current time as string
         """
         return time.strftime("%Y/%m/%d %H:%M:%S")
-
 
     def getInterfacesAddresses(self):
         """
@@ -369,10 +355,10 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
 
         for interface in self.cmdb.nics.keys():
             try:
-                data = o.cloud.cmdtools.inventoryScan.getIPAddress(interface)
-            except RuntimeError, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError("Failed to retrieve interface %(interface)s address. Reason: [%(reason)s]"%{'interface':interface, 'reason': ex.message})
+                data = j.cloud.cmdtools.inventoryScan.getIPAddress(interface)
+            except RuntimeError as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError("Failed to retrieve interface %(interface)s address. Reason: [%(reason)s]" % {'interface': interface, 'reason': ex.message})
             else:
                 self.cmdb.os.nicAddresses[interface] = data
                 self.cmdb.os.timeStamp = self._getCurrentTime()
@@ -386,7 +372,6 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         self.getInterfacesAddresses()
         return self.cmdb.os
 
-
     def getZPoolMirrorInfo(self):
         """
         Retrieves ZPool mirror, disks info and status, update self.Device
@@ -395,10 +380,10 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
         """
         for zpool in self.cmdb.zPoolList:
             try:
-                status = o.cloud.cmdtools.inventoryScan.getZPoolStatus(zpool.name)
-            except RuntimeError, ex:
-                o.logger.log(ex.message, 3)
-                raise RuntimeError('Failed to retrieve ZPool mirrors info for ZPool %(zPool)s. Reason: [%(reason)s]'%{'zPool':zpool,'reason':ex.message})
+                status = j.cloud.cmdtools.inventoryScan.getZPoolStatus(zpool.name)
+            except RuntimeError as ex:
+                j.logger.log(ex.message, 3)
+                raise RuntimeError('Failed to retrieve ZPool mirrors info for ZPool %(zPool)s. Reason: [%(reason)s]' % {'zPool': zpool, 'reason': ex.message})
             else:
                 mirrors = status['mirrors']
                 for mirrorStatus in mirrors:
@@ -422,54 +407,50 @@ class InventoryManager(ManagementConfiguration, CMDBLockMixin):
                 zpool.errors = status['errors']
                 return tuple(self.cmdb.zPoolList)
 
-
     def getHypervisorType(self):
         """
         Retrieves hypervisor type if any hypervisor was installed on this machine
         """
         try:
-            self.cmdb.hypervisor.type = o.cloud.cmdtools.inventoryScan.getHypervisorType()
-        except RuntimeError, ex:
-            o.logger.log(ex.message, 3)
-            raise RuntimeError('Failed to retrieve Hypervisor type. Reason: [%(reason)s]'%{'reason':ex.message})
+            self.cmdb.hypervisor.type = j.cloud.cmdtools.inventoryScan.getHypervisorType()
+        except RuntimeError as ex:
+            j.logger.log(ex.message, 3)
+            raise RuntimeError('Failed to retrieve Hypervisor type. Reason: [%(reason)s]' % {'reason': ex.message})
         return self.cmdb.hypervisor.type
-
 
     def getVMachinesStatistics(self):
         """
         Retrieves VMachines, cpu memory usage for each machine
         """
         try:
-            self.cmdb.hypervisor.vmSatistics = o.cloud.cmdtools.inventoryScan.getVMachines()
+            self.cmdb.hypervisor.vmSatistics = j.cloud.cmdtools.inventoryScan.getVMachines()
             self.cmdb.hypervisor.timeStamp = self._getCurrentTime()
             return self.cmdb.hypervisor.vmSatistics
-        except RuntimeError, ex:
-            o.logger.log('Failed to retrieve VMachines statistics. Reason: [%(reason)s]'%{'reason':ex.message}, 3)
-        except AttributeError, ex:
-            o.logger.log('Failed to retrieve VMachines statistics. Reason: [%(reason)s]'%{'reason':ex.message}, 3)
+        except RuntimeError as ex:
+            j.logger.log('Failed to retrieve VMachines statistics. Reason: [%(reason)s]' % {'reason': ex.message}, 3)
+        except AttributeError as ex:
+            j.logger.log('Failed to retrieve VMachines statistics. Reason: [%(reason)s]' % {'reason': ex.message}, 3)
 
-
-    def getVMachinesNetworkStatistics(self, delay = 2):
+    def getVMachinesNetworkStatistics(self, delay=2):
         """
         Retrieves VMachines nic Usage
         """
         try:
-            self.cmdb.hypervisor.vmNicSatistics = o.cloud.cmdtools.inventoryScan.getVMachinesNetworkStatistics(delay)
+            self.cmdb.hypervisor.vmNicSatistics = j.cloud.cmdtools.inventoryScan.getVMachinesNetworkStatistics(delay)
             self.cmdb.hypervisor.timeStamp = self._getCurrentTime()
             return self.cmdb.hypervisor.vmNicSatistics
-        except RuntimeError, ex:
-            o.logger.log('Failed to retrieve VMachines Nics statistics. Reason: [%(reason)s]'%{'reason':ex.message}, 3)
-        except AttributeError, ex:
-            o.logger.log('Failed to retrieve VMachines Nics statistics. Reason: [%(reason)s]'%{'reason':ex.message}, 3)
+        except RuntimeError as ex:
+            j.logger.log('Failed to retrieve VMachines Nics statistics. Reason: [%(reason)s]' % {'reason': ex.message}, 3)
+        except AttributeError as ex:
+            j.logger.log('Failed to retrieve VMachines Nics statistics. Reason: [%(reason)s]' % {'reason': ex.message}, 3)
 
-
-    def getNetworkStatistics(self, delay = 2):
+    def getNetworkStatistics(self, delay=2):
         """
         Retrieves network statistics for each real nic
         """
         try:
-            self.cmdb.performance.networkStatistics = o.cloud.cmdtools.inventoryScan.getNetworkStatistics(delay)
+            self.cmdb.performance.networkStatistics = j.cloud.cmdtools.inventoryScan.getNetworkStatistics(delay)
             self.cmdb.performance.timeStamp = self._getCurrentTime()
             return self.cmdb.performance.networkStatistics
-        except RuntimeError, ex:
-            o.logger.log("Failed to retrieve network statistics. Reason: [%s]"%ex.message, 3)
+        except RuntimeError as ex:
+            j.logger.log("Failed to retrieve network statistics. Reason: [%s]" % ex.message, 3)

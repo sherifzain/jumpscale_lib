@@ -1,7 +1,9 @@
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses import BaseEnumeration
+from JumpScale import j
+from JumpScale.core.baseclasses import BaseEnumeration
+
 
 class LogRotateMail(BaseEnumeration):
+
     @classmethod
     def _initItems(cls):
         cls.registerItem('mail')
@@ -9,7 +11,9 @@ class LogRotateMail(BaseEnumeration):
         cls.registerItem('maillast')
         cls.finishItemRegistration()
 
+
 class LogRotateTime(BaseEnumeration):
+
     @classmethod
     def _initItems(cls):
         cls.registerItem('daily')
@@ -17,15 +21,19 @@ class LogRotateTime(BaseEnumeration):
         cls.registerItem('monthly')
         cls.finishItemRegistration()
 
+
 class LogRotateSize(BaseEnumeration):
+
     @classmethod
     def _initItems(cls):
         cls.registerItem('k')
         cls.registerItem('M')
         cls.registerItem('G')
         cls.finishItemRegistration()
-                    
+
+
 class LogRotateScript(BaseEnumeration):
+
     @classmethod
     def _initItems(cls):
         cls.registerItem('postrotate')
@@ -34,35 +42,37 @@ class LogRotateScript(BaseEnumeration):
         cls.registerItem('lastaction')
         cls.finishItemRegistration()
 
+
 class LogRotateOptions(BaseEnumeration):
+
     @classmethod
     def _initItems(cls):
-        #copy
+        # copy
         cls.registerItem('copy')
         cls.registerItem('nocopy')
-        #truncate
+        # truncate
         cls.registerItem('copytruncate')
         cls.registerItem('nocopytruncate')
-        #creation
+        # creation
         cls.registerItem('create')
         cls.registerItem('nocreate')
-        #compression
+        # compression
         cls.registerItem('compress')
         cls.registerItem('nocompress')
         cls.registerItem('delaycompress')
-        #size
+        # size
         cls.registerItem('size')
-        #rotation time
+        # rotation time
         cls.registerItem('daily')
         cls.registerItem('weekly')
         cls.registerItem('monthly')
-        #rotation count
+        # rotation count
         cls.registerItem('rotate')
-        #rotation dir
+        # rotation dir
         cls.registerItem('olddir')
         cls.registerItem('noolddir')
         cls.registerItem('rotationdir')
-        #mail
+        # mail
         cls.registerItem('mail')
         cls.registerItem('nomail')
         cls.registerItem('mailfirst')
@@ -70,7 +80,9 @@ class LogRotateOptions(BaseEnumeration):
         cls.registerItem('sharedscripts')
         cls.finishItemRegistration()
 
+
 class LogRotateGroups(BaseEnumeration):
+
     @classmethod
     def _initItems(cls):
         cls.registerItem('copy')

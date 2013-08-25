@@ -32,18 +32,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # </License>
- 
-from OpenWizzy import o
-from OpenWizzy.core.baseclasses.CMDBSubObject import CMDBSubObject
+
+from JumpScale import j
+from JumpScale.core.baseclasses.CMDBSubObject import CMDBSubObject
+
 
 class ZFS(CMDBSubObject):
 
-    name  = o.basetype.string(doc = 'ZFS name', allow_none = False)
-    mountPoint  = o.basetype.string(doc = 'ZFS mountpoint path', allow_none = False)
-    availableSize = o.basetype.string(doc = 'Size of the avialble storage', allow_none = False)
-    used = o.basetype.string(doc = 'Size of the used storage', allow_none = False)
-    refer = o.basetype.string(doc = 'Size of the refer storage', allow_none = False)
-
+    name = j.basetype.string(doc='ZFS name', allow_none=False)
+    mountPoint = j.basetype.string(doc='ZFS mountpoint path', allow_none=False)
+    availableSize = j.basetype.string(doc='Size of the avialble storage', allow_none=False)
+    used = j.basetype.string(doc='Size of the used storage', allow_none=False)
+    refer = j.basetype.string(doc='Size of the refer storage', allow_none=False)
 
     def __repr__(self):
-        return "name: %(name)s, mountPoint: %(mountpoint)s, availableSize: %(availablesize)s, Used: %(used)s, Refer: %(refer)s"%{'name': self.name, 'mountpoint': self.mountPoint, 'availablesize':self.availableSize, 'used':self.used, 'refer': self.refer}
+        return "name: %(name)s, mountPoint: %(mountpoint)s, availableSize: %(availablesize)s, Used: %(used)s, Refer: %(refer)s" % {'name': self.name, 'mountpoint': self.mountPoint, 'availablesize': self.availableSize, 'used': self.used, 'refer': self.refer}
