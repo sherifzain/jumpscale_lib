@@ -2,6 +2,8 @@ from JumpScale import j
 from JumpScale.core.config import *
 from JumpScale import j
 import string
+from JumpScale.core.config.ConfigLib import ItemGroupClass
+from JumpScale.core.config.IConfigBase import ConfigManagementItem
 
 
 class ClusterConfig(ConfigManagementItem):

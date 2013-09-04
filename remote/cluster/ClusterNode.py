@@ -33,8 +33,7 @@ class ClusterNode():
         template = """
 from JumpScale.core.InitBase import *
 
-j.application.appname = "qshellexecute"
-j.application.start()
+j.application.start("qshellexecute")
 
 j.logger.maxlevel=6 #to make sure we see output from SSH sessions 
 j.logger.consoleloglevel=2

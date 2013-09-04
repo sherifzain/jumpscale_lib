@@ -1,4 +1,4 @@
-from jumpscale import *
+from JumpScale import j
 import time
 import os
 import re

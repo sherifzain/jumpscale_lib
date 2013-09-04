@@ -14,7 +14,7 @@ class ClusterFactory():
         # self._lastSuperadminPassword=""
         self.clusters = {}
         self.replicator = Replicator()
-        i.cluster = self
+        j.cluster = self
         config = j.config.getInifile("clusterconfig")
         self.config = ClusterConfigs()
         self.replication = Replicator()
