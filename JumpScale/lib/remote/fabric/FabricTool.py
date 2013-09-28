@@ -45,7 +45,7 @@ class FabricTool():
     def help(self):
         C = """
 easiest way to use do:
-f=j.tools.fabric.api
+f=j.remote.fabric.api
 and then
 
 f.run(...)

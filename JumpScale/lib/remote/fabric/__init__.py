@@ -3,6 +3,6 @@ from JumpScale import j
 
 j.base.loader.makeAvailable(j, 'tools')
 
-from Cuisine import Cuisine
+from FabricTool import FabricTool
 
-j.tools.cuisine = Cuisine()
+j.remote.fabric = FabricTool()

@@ -1,11 +1,9 @@
 from JumpScale import j
-from JumpScale.core.Shell import *
 
-
-class AvahiCMD():
+class Avahi():
 
     def __init__(self):
-        pass
+        j.system.platform.ubuntu.checkInstall(["avahi-utils"],"avahi-browse")
 
     def getServices(self):
         cmd = "avahi-browse -a -r -t"
@@ -67,6 +65,13 @@ class AvahiServices():
 
     def _add(self, service):
         self.services.append(service)
+
+    def exists(self, hostname="", partofname="", partofdescription="", port=0):
+        """
+        @return True/False,resultOfServices   #avoids having to wait twice for avahi query
+        """
+        res=self.find(hostname,partofname,partofdescription,port)
+        return (len(res)>0,res)
 
     def find(self, hostname="", partofname="", partofdescription="", port=0):
         def check1(service, hostname):
