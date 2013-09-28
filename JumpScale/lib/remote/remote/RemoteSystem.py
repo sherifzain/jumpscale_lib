@@ -232,7 +232,7 @@ class RemoteSystemProcess(_remoteSystemObject):
         #@Todo: Timeout, outputToStdout, loglevel not used
         # are they usefull are simply there for backwards compatibility?
 
-        if j.system.platformtype.has_parent(j.enumerators.PlatformType.UNIX):
+        if j.system.platformtype.has_parent("unix"):
             exitcode, output, error = self._executeUnix(command, dieOnNonZeroExitCode)
         else:
 
