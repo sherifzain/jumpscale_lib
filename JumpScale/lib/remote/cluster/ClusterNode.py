@@ -46,7 +46,7 @@ j.application.stop()
         j.system.fs.writeFile(tmpfilepath, commands)
         self.sendfile(tmpfilepath, tmpfilepath)
         result = self.sshclient.execute("/opt/qbase6/qshell -f %s" % tmpfilepath, dieOnError, timeout=timeout)
-        j.system.fs.removeFile(tmpfilepath)
+        j.system.fs.remove(tmpfilepath)
         j.transaction.stop()
         return [0, result, ""]
 

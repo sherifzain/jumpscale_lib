@@ -138,7 +138,7 @@ class ClusterFactory():
         # files=j.system.fs.listFilesInDir(path,True,filter="*.pyc")
         # files.extend(j.system.fs.listFilesInDir(path,True,filter="*.pyo")) #@todo remove other files
         # for item in files:
-            # j.system.fs.removeFile(item)
+            # j.system.fs.remove(item)
         # j.system.fs.removeDirTree(j.system.fs.joinPaths(j.dirs.logDir))
         # j.system.fs.removeDirTree(j.system.fs.joinPaths(j.dirs.tmpDir))
         # j.system.fs.createDir(j.system.fs.joinPaths(j.dirs.tmpDir))

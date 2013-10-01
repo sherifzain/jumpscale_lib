@@ -438,7 +438,7 @@ class LogRotate(object):
         serviceConfigPath = j.system.fs.joinPaths(_LOGROTATE_CONFIG_PATH, service)
         # remove service from file system
         if j.system.fs.exists(serviceConfigPath):
-            j.system.fs.removeFile(j.system.fs.joinPaths(_LOGROTATE_CONFIG_PATH, service))
+            j.system.fs.remove(j.system.fs.joinPaths(_LOGROTATE_CONFIG_PATH, service))
         # also remove service from the services dictionary
         _services._remove(service)
 

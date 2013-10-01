@@ -115,7 +115,7 @@ class USB:
 
     def remove(self):
         try:
-            j.system.fs.removeFile(self._filename)
+            j.system.fs.remove(self._filename)
         except Exception as ex:
             self._LOGGER.log('USB device removal for {0} failed with exception {1}'.format(self.label, ex))
             return False

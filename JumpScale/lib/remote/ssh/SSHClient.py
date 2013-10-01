@@ -68,7 +68,7 @@ class SSHClient:
         files = j.system.fs.listFilesInDir(path, True, filter="*.pyc")
         files.extend(j.system.fs.listFilesInDir(path, True, filter="*.pyo"))  # @todo remove other files  (id:6)
         for item in files:
-            j.system.fs.removeFile(item)
+            j.system.fs.remove(item)
 
     def copyDirTree(self, source, destination="", removeNonRelevantFiles=False):
         """
