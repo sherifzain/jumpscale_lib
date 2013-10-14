@@ -3,11 +3,6 @@ from JumpScale import j
 j.system.platform.ubuntu.check()
 
 do = j.develtools.installer._do
-try:
-    import fabric
-except:
-    do.execute("easy_install fabric")
-
 import fabric
 import fabric.api
 
@@ -19,18 +14,23 @@ import fabric.api
 # from fabric.api import show as fshow
 # from fabric.api import put as fput
 
-
 class FabricTool():
 
     def __init__(self):
-        self.do = j.develtools.installer._do
+        self._do = j.develtools.installer._do
         self.api = fabric.api
         self.setHost()
+        self.api.env.passwords = {}
+
+    def setDefaultPasswd(self,passwd,host="localhost"):
+        self.api.env["password"]=passwd
+        self.api.env.passwords["root@%s"%host]=passwd
+        # self.api.env.hosts = ['user1@host1:port1', 'user2@host2.port2']
+        # self.api.env.passwords = {'user1@host1:port1': 'password1', 'user2@host2.port2': 'password2'}
 
     def install(self):
         codename, descr, id, release = j.system.platform.ubuntu.getVersion()
         do = j.develtools.installer._do
-
         do.execute("pip install fabric")
 
     def setHost(self, host="localhost"):
@@ -48,6 +48,6 @@ easiest way to use do:
 f=j.remote.fabric.api
 and then
 
-f.run(...)
+f.api.run(...)
         """
         print C
