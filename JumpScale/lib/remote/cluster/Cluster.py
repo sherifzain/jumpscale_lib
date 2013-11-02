@@ -463,7 +463,7 @@ class Cluster(BaseType):
             node.connectCodedir(localip)
         j.transaction.stop()
 
-    def connectClusterToMyQpackages(self, hostnames=[]):
+    def connectClusterToMyJpackages(self, hostnames=[]):
         """
         connect the nodes of the cluster to my /opt/qbase6/var/owpackages directory
         also push my owpackages configuration to the other clusternodes
@@ -473,17 +473,17 @@ class Cluster(BaseType):
         nodes = self.selectNodes("Select which nodes ", hostnames)
         localip = self.getMyClusterIp()
         for node in nodes:
-            node.connectQpackagedir(localip)
+            node.connectJpackagedir(localip)
         j.transaction.stop()
 
-    def installQPackage(self, name, domain, version, reconfigure, hostnames=[]):
+    def installJPackage(self, name, domain, version, reconfigure, hostnames=[]):
         """
         install a owpackage on the specified nodes in the cluster
         """
         j.transaction.start("Install package on cluster")
         nodes = self.selectNodes("Select which on which nodes you want to install this owpackage", hostnames)
         for node in nodes:
-            node.installQPackage(name, domain, version, reconfigure)
+            node.installJPackage(name, domain, version, reconfigure)
         j.transaction.stop()
 
     def symlink(self, target, linkname, hostnames=[]):

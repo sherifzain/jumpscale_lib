@@ -304,7 +304,7 @@ j.application.stop()
         dirpath = "/opt/code"
         self.connectToNFSServer(dirpath, ipaddr)
 
-    def connectQpackagedir(self, ipaddr, delete=False):
+    def connectJpackagedir(self, ipaddr, delete=False):
         """
         mount /opt/code to /opt/code of the specified node (ipaddr)
         """
@@ -312,13 +312,13 @@ j.application.stop()
         dirpath = "/opt/qbase6/var/owpackages"
         self.connectToNFSServer(dirpath, ipaddr, delete)
 
-    def installQPackage(self, name):
+    def installJPackage(self, name):
         """
         install owpackage name, domain, version onto cluster node
         """
         qshellscript = """
-qp=i.qp.findByName("$name")
-qp.install()
+jp=i.jp.findByName("$name")
+jp.install()
 """
         qshellscript.replace("$name", name)
         self.executeQshell([qshellscript])
