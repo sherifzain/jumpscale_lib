@@ -40,7 +40,7 @@ class ClusterSSHClient():
         for passwd in passwords2try:
             if state == "start" or state == "autherror":
                 try:
-                    # We need to package qshell remote for this
+                    # We need to package jshell remote for this
                     #j.logger.log("clustersshclient: try to login with passwd %s on %s" %(passwd,self.node.ipaddr),2)
                     self._sshclient = j.remote.system.connect(self.node.ipaddr, "root", passwd, timeout=10)
                     state = "done"

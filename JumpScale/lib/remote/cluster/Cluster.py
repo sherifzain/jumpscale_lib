@@ -273,7 +273,7 @@ class Cluster(BaseType):
         """
         execute a command on every node of the cluster, only output the result
         """
-        j.transaction.start("Execute qshell cmd %s on cluster." % command)
+        j.transaction.start("Execute jshell cmd %s on cluster." % command)
         nodes = self.selectNodes("Select which nodes", hostnames)
         results = {}
         for node in nodes:

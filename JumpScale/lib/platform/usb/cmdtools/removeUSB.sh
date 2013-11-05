@@ -18,7 +18,7 @@ done
 log_file=/opt/qbase5/var/log/usb.log
 
 LABEL="CLOUDDISK_"`basename $DEVICENAME`
-#Call removeUSBDevice command from qshell!
+#Call removeUSBDevice command from jshell!
 echo "Remove USB: $DATE - q.cmdtools.disktools.usb._remove('$LABEL')" >> $log_file
 
-/opt/qbase5/qshell -c "q.cmdtools.disktools.usb._remove('$LABEL')" >> $log_file 2>&1
+/opt/qbase5/jshell -c "q.cmdtools.disktools.usb._remove('$LABEL')" >> $log_file 2>&1

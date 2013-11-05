@@ -24,7 +24,7 @@ class ClusterNode():
         if not commands:
             raise RuntimeError('Commands is empty!')
         print 'COMMANDS: ' + commands
-        j.transaction.start("Execute qshellcmd %s on node %s %s" % (commands, self.hostname, self.ipaddr), silent=silent)
+        j.transaction.start("Execute jshellcmd %s on node %s %s" % (commands, self.hostname, self.ipaddr), silent=silent)
         tmpfilepath = j.system.fs.getTmpFilePath()
 
         #
@@ -33,7 +33,7 @@ class ClusterNode():
         template = """
 from JumpScale.core.InitBase import *
 
-j.application.start("qshellexecute")
+j.application.start("jshellexecute")
 
 j.logger.maxlevel=6 #to make sure we see output from SSH sessions 
 j.logger.consoleloglevel=2
@@ -45,7 +45,7 @@ j.application.stop()
 
         j.system.fs.writeFile(tmpfilepath, commands)
         self.sendfile(tmpfilepath, tmpfilepath)
-        result = self.sshclient.execute("/opt/qbase6/qshell -f %s" % tmpfilepath, dieOnError, timeout=timeout)
+        result = self.sshclient.execute("/opt/qbase6/jshell -f %s" % tmpfilepath, dieOnError, timeout=timeout)
         j.system.fs.remove(tmpfilepath)
         j.transaction.stop()
         return [0, result, ""]
@@ -316,12 +316,12 @@ j.application.stop()
         """
         install owpackage name, domain, version onto cluster node
         """
-        qshellscript = """
+        jshellscript = """
 jp=i.jp.findByName("$name")
 jp.install()
 """
-        qshellscript.replace("$name", name)
-        self.executeQshell([qshellscript])
+        jshellscript.replace("$name", name)
+        self.executeQshell([jshellscript])
 
     def connectToNFSServer(self, dirpath, ipaddr, delete=False):
         """

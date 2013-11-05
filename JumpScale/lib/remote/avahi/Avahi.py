@@ -5,6 +5,30 @@ class Avahi():
     def __init__(self):
         j.system.platform.ubuntu.checkInstall(["avahi-utils"],"avahi-browse")
 
+    def registerService(self,servicename,port):
+        content = """<?xml version=\"1.0\" standalone=\'no\'?>
+<!--*-nxml-*-->
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<!-- $Id$ -->
+<service-group>
+<name replace-wildcards="yes">${servicename} %h</name>
+
+<service>
+<type>_${servicename}._tcp</type>
+<port>${port}</port>
+</service>
+
+</service-group>
+"""
+        content = content.replace("${servicename}", servicename)
+        content = content.replace("${port}", str(port))
+        tmpfile = j.system.fs.joinPaths(j.dirs.tmpDir, "avahi")
+        path="/etc/avahi/services"
+        j.system.fs.createDir(path)
+        j.system.fs.writeFile("%s/%s.service"%(path,servicename), content)
+        cmd="avahi-daemon --reload"
+        j.system.process.execute(cmd)
+
     def getServices(self):
         cmd = "avahi-browse -a -r -t"
         result, output = j.system.process.execute(cmd, False, False)

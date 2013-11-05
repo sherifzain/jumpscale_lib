@@ -40,7 +40,7 @@ extra=( $(udevadm info -q all --name $DEVICENAME --attribute-walk | awk -F "==" 
 SIZE=${extra[0]}
 SPEED=${extra[1]}
 
-#Call newUSBDevice command from qshell!
+#Call newUSBDevice command from jshell!
 log_file=/opt/qbase5/var/log/usb.log
 
 if [ ! -f $log_file ] 
@@ -50,7 +50,7 @@ fi
 
 echo "Add USB: $DATE - q.cmdtools.disktools.usb._add('$MODEL', '$SERIAL', '$DEVICENAME', '$LABEL', '$SIZE', '$SPEED', '$VENDOR')" >> $log_file 
 
-/opt/qbase5/qshell -c "q.cmdtools.disktools.usb._add(model='$MODEL', serial='$SERIAL', devicename='$DEVICENAME', label='$LABEL', size='$SIZE', speed='$SPEED', vendor='$VENDOR')" >> $log_file 2>&1
+/opt/qbase5/jshell -c "q.cmdtools.disktools.usb._add(model='$MODEL', serial='$SERIAL', devicename='$DEVICENAME', label='$LABEL', size='$SIZE', speed='$SPEED', vendor='$VENDOR')" >> $log_file 2>&1
 
 if [ -f $log_file ] 
 then
