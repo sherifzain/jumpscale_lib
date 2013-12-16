@@ -48,16 +48,17 @@ class Diskmanager():
     def _kib_to_sectors(self,device, kib):
         return parted.sizeToSectors(kib, 'KiB', device.sectorSize)
 
-    def partitionsFind(self,ttype="ext4",ssd=None,prefix="sd",minsize=300,maxsize=5000):
+    def partitionsFind(self,busy=None,ttype=None,ssd=None,prefix="sd",minsize=30,maxsize=5000):
         """
         looks for disks which are know to be data disks & are formatted ext4
-        return [[$partpath,$gid,$partid,$size,$free,$ssd]]
+        return [[$partpath,$size,$free,$ssd]]
         @param ssd if None then ssd and other
         """
         result=[]
         import parted
         import psutil
         p=parted.disk.parted
+        result=[]
         for dev in parted.getAllDevices():
             path=dev.path
             geom = dev.hardwareGeometry;
@@ -65,32 +66,43 @@ class Diskmanager():
             size = (geom[0] * geom[1] * geom[2] * ssize) / 1000 / 1000 / 1000;
             size2=dev.getSize()
             model=dev.model
-            busy=dev.busy
-            if busy==False:
-                if path.find("/dev/%s"%prefix)==0:
-                    #sata disk
-                    # device = parted.getDevice("/dev/%s"%path)
-                    disk = parted.Disk(dev)
-                    primary_partitions = disk.getPrimaryPartitions()
-                    for partition in primary_partitions:
-                        # print "Partition: %s" % partition.path
-                        size=round(partition.getSize(unit="gb"),2)
-                        # print "Size: %s GB" % size
-                        try:
-                            fs = parted.probeFileSystem(partition.geometry)
-                        except:
-                            fs = "unknown"
-                        # print "Filesystem: %s" % fs
-                        # print "Start: %s End: %s" % (partition.geometry.start,partition.geometry.end)
-                        if fs==ttype and size>300 and size<maxsize:
-                            stats=os.statvfs(partition.path)
-                            free=round(float(stats.f_bfree)/float(stats.f_blocks)*size,2)
-                            from IPython import embed
-                            print "DEBUG NOW ooo"
-                            embed()
+            ssd0=int(j.system.fs.fileGetContents("/sys/block/%s/queue/rotational"%dev.path).strip())==0
+            if ssd==None or ssd0==ssd:
+                if busy==None or dev.busy==busy:
+                    if path.find("/dev/%s"%prefix)==0:
+                        #sata disk                    
+                        disk = parted.Disk(dev)
+                        primary_partitions = disk.getPrimaryPartitions()
+                        for partition in primary_partitions:
+                            # print "Partition: %s" % partition.path
+                            size=round(partition.getSize(unit="gb"),2)
+                            try:
+                                fs = parted.probeFileSystem(partition.geometry)
+                            except:
+                                fs = "unknown"
+                            print "PART:%s Size: %s GB, Filesystem: %s" % (path,size,fs)
+                            # print "Start: %s End: %s" % (partition.geometry.start,partition.geometry.end)
+                            if (ttype==None or fs==ttype) and size>minsize and size<maxsize:
+                                stats=os.statvfs(partition.path)
+                                free=round(float(stats.f_bfree)/float(stats.f_blocks)*size,2)
+                                print "FOUND PART:%s %s %s %s"%(partition.path,size,free,ssd0)
+                                result.append((partition.path,size,free,ssd0))
+
                             
-                            print "found disk:%s %s %s %s %s"%(partition.path,gid,partnr,size,free,ssd)
-                            result.append((partition.path,gid,partnr,size,free,ssd))
+                                cmd="mount %s /mnt/tmp"%path
+                                j.system.process.execute(cmd)
+                                hrdpath="/mnt/tmp/disk.hrd"
+                                if j.system.fs.exists(hrdpath):
+                                    hrd=j.core.hrd.getHRD(hrdpath)
+                                    partnr=hrd.get("diskinfo.partnr")
+                                    gid=hrd.get("diskinfo.gid")
+                                    print "found data disk:%s %s %s %s %s %s"%(partition.path,gid,partnr,size,free,ssd)
+                                    result.append((partition.path,gid,partnr,size,free))
+                                cmd="umount /mnt/tmp"
+                                j.system.process.execute(cmd)
+                                if os.path.ismount("/mnt/tmp")==True:
+                                    raise RuntimeError("/mnt/tmp should not be mounted")
+
         return result  
 
     def partitionsFind_Ext4Data(self):
@@ -98,20 +110,9 @@ class Diskmanager():
         looks for disks which are know to be data disks & are formatted ext4
         return [[$partpath,$gid,$partid,$size,$free]]
         """
-        for path,gid,partnr,size,free,ssd in self.partitionsFind_Ext4Data():
-            cmd="mount %s /mnt/tmp"%path
-            j.system.process.execute(cmd)
-            hrdpath="/mnt/tmp/disk.hrd"
-            if j.system.fs.exists(hrdpath):
-                hrd=j.core.hrd.getHRD(hrdpath)
-                partnr=hrd.get("diskinfo.partnr")
-                gid=hrd.get("diskinfo.gid")
-                print "found data disk:%s %s %s %s %s %s"%(partition.path,gid,partnr,size,free,ssd)
-                result.append((partition.path,gid,partnr,size,free))
-            cmd="umount /mnt/tmp"
-            j.system.process.execute(cmd)
-            if os.path.ismount("/mnt/tmp")==True:
-                raise RuntimeError("/mnt/tmp should not be mounted")
+        result=[]
+        for path,size,free,ssd in self.partitionsFind(busy=False,ttype="ext4",ssd=False,prefix="sd",minsize=300,maxsize=5000):
+            
         return result       
 
     def partitionsMount_Ext4Data(self):
@@ -128,7 +129,7 @@ class Diskmanager():
             cmd="umount %s"%(mntdir)
             j.system.process.execute(cmd)
 
-    def partitionsGet_Ext4Data(self):
+    def partitionsGetMounted_Ext4Data(self):
         """
         find disks which are mounted
         @return [[$partid,$size,$free]]
