@@ -7,6 +7,27 @@ except:
     j.system.platform.ubuntu.install("python-parted")
     import parted
 
+class Disk():
+    """
+    identifies a disk in the grid
+    """
+
+    def __init__(self):
+        self.path = ""
+        self.size = ""
+        self.free = ""
+        self.ssd=False
+        self.fs=""
+        self.mounted=False
+        self.mountpoint=""
+        self.model=""
+        self.description=""
+
+    def __str__(self):
+        return "%s %s %s free:%s ssd:%s fs:%s model:%s"%(self.path,self.mountpoint,self.size,self.free,self.ssd,self.fs,self.model)
+
+    __repr__=__str__
+
 class Diskmanager(): 
     def partitionAdd(self,disk, free, align=None, length=None, fs_type=None, type=parted.PARTITION_NORMAL):
         start = free.start
@@ -48,7 +69,7 @@ class Diskmanager():
     def _kib_to_sectors(self,device, kib):
         return parted.sizeToSectors(kib, 'KiB', device.sectorSize)
 
-    def partitionsFind(self,busy=None,ttype=None,ssd=None,prefix="sd",minsize=30,maxsize=5000):
+    def partitionsFind(self,mounted=None,ttype=None,ssd=None,prefix="sd",minsize=30,maxsize=5000,devbusy=None,initialize=False):
         """
         looks for disks which are know to be data disks & are formatted ext4
         return [[$partpath,$size,$free,$ssd]]
@@ -59,49 +80,103 @@ class Diskmanager():
         import psutil
         p=parted.disk.parted
         result=[]
+        psutilparts=psutil.disk_partitions()
+
+        disko=Disk()
+
+        def getpsutilpart(partname):
+            for part00 in psutilparts:
+                if part00.device==partname:
+                    return part00
+            return None
+
         for dev in parted.getAllDevices():
             path=dev.path
             geom = dev.hardwareGeometry;
-            ssize = dev.sectorSize;
-            size = (geom[0] * geom[1] * geom[2] * ssize) / 1000 / 1000 / 1000;
-            size2=dev.getSize()
-            model=dev.model
-            ssd0=int(j.system.fs.fileGetContents("/sys/block/%s/queue/rotational"%dev.path).strip())==0
-            if ssd==None or ssd0==ssd:
-                if busy==None or dev.busy==busy:
-                    if path.find("/dev/%s"%prefix)==0:
-                        #sata disk                    
-                        disk = parted.Disk(dev)
-                        primary_partitions = disk.getPrimaryPartitions()
-                        for partition in primary_partitions:
-                            # print "Partition: %s" % partition.path
-                            size=round(partition.getSize(unit="gb"),2)
-                            try:
-                                fs = parted.probeFileSystem(partition.geometry)
-                            except:
-                                fs = "unknown"
-                            print "PART:%s Size: %s GB, Filesystem: %s" % (path,size,fs)
-                            # print "Start: %s End: %s" % (partition.geometry.start,partition.geometry.end)
-                            if (ttype==None or fs==ttype) and size>minsize and size<maxsize:
-                                stats=os.statvfs(partition.path)
-                                free=round(float(stats.f_bfree)/float(stats.f_blocks)*size,2)
-                                print "FOUND PART:%s %s %s %s"%(partition.path,size,free,ssd0)
-                                result.append((partition.path,size,free,ssd0))
+            #ssize = dev.sectorSize;
+            # size = (geom[0] * geom[1] * geom[2] * ssize) / 1000 / 1000 / 1000;
+            # size2=dev.getSize()
+            disko.model=dev.model
 
+            if devbusy==None or dev.busy==devbusy:                    
+                if path.find("/dev/%s"%prefix)==0:                        
+                    disk = parted.Disk(dev)
+                    primary_partitions = disk.getPrimaryPartitions()
+                    for partition in primary_partitions:
+                        disko.path=partition.path
+                        disko.size=round(partition.getSize(unit="gb"),2)
+
+                        try:
+                            fs = parted.probeFileSystem(partition.geometry)
+                        except:
+                            fs = "unknown"
+
+                        disko.fs=fs
+
+                        partfound=getpsutilpart(partition.path)
+                        if partfound==None:
+                            mounted=False
+                            mountpoint="/mnt/tmp"
+                            cmd="mount %s /mnt/tmp"%partition.path
+                            rcode,output=j.system.process.execute(cmd,ignoreErrorOutput=False,dieOnNonZeroExitCode=False,)
+                            if rcode<>0:
+                                #mount did not work
+                                mountpoint==None
+
+                            disko.mountpoint=None
+                            disko.mounted=False
+                        else:
+                            mounted=True                            
+                            mountpoint=partfound.mountpoint
+                            disko.mountpoint=mountpoint
+                            disko.mounted=True
+
+                        if mountpoint<>None:
+                            size, used, free, percent=psutil.disk_usage(mountpoint)
+                            disko.free=disko.size*float(1-percent/100)
                             
-                                cmd="mount %s /mnt/tmp"%path
-                                j.system.process.execute(cmd)
-                                hrdpath="/mnt/tmp/disk.hrd"
-                                if j.system.fs.exists(hrdpath):
-                                    hrd=j.core.hrd.getHRD(hrdpath)
-                                    partnr=hrd.get("diskinfo.partnr")
-                                    gid=hrd.get("diskinfo.gid")
-                                    print "found data disk:%s %s %s %s %s %s"%(partition.path,gid,partnr,size,free,ssd)
-                                    result.append((partition.path,gid,partnr,size,free))
-                                cmd="umount /mnt/tmp"
-                                j.system.process.execute(cmd)
-                                if os.path.ismount("/mnt/tmp")==True:
-                                    raise RuntimeError("/mnt/tmp should not be mounted")
+
+                            if (ttype==None or fs==ttype) and disko.size>minsize and disko.size<maxsize:
+                                pathssdcheck="/sys/block/%s/queue/rotational"%dev.path.replace("/dev/","").strip()
+                                ssd0=int(j.system.fs.fileGetContents(pathssdcheck))==0
+                                disko.ssd=ssd0
+                                if ssd==None or ssd0==ssd:
+
+                                    print disko
+                                    
+                                    hrdpath="%s/disk.hrd"%mountpoint
+                                    if not j.system.fs.exists(hrdpath) and initialize==False:
+                                        raise RuntimeError("Disks not initialized, there needs to be a disk.hrd in root of partition")
+                                    if not j.system.fs.exists(hrdpath) and initialize:
+                                        C="""
+diskinfo.partnr=
+diskinfo.gid=
+diskinfo.nid=
+diskinfo.type=
+diskinfo.epoch=
+diskinfo.description=
+"""
+                                        j.system.fs.writeFile(filename=hrdpath,contents=C)
+                                        hrd=j.core.hrd.getHRD(hrdpath)
+                                        hrd.set("diskinfo.description",j.console.askString("please give description for disk"))
+                                        hrd.set("diskinfo.type",j.console.askChoice(["BOOT","CACHE","TMP","DATA"]))
+                                        hrd.set("diskinfo.gid",j.application.whoAmI.gid)
+                                        hrd.set("diskinfo.nid",j.application.whoAmI.nid)
+                                        hrd.set("diskinfo.epoch",j.base.time.getTimeEpoch())
+                                        hrd.set("diskinfo.partnr",j.base.time.getTimeEpoch())
+
+
+                                    if j.system.fs.exists(hrdpath):
+                                        hrd=j.core.hrd.getHRD(hrdpath)
+                                        partnr=hrd.get("diskinfo.partnr")
+                                        gid=hrd.get("diskinfo.gid")
+                                        gid=hrd.get("diskinfo.gid")
+                                        print "found data disk:%s %s %s %s %s %s"%(partition.path,gid,partnr,size,free,ssd)
+                                        result.append((partition.path,gid,partnr,size,free))
+                                    cmd="umount /mnt/tmp"
+                                    j.system.process.execute(cmd)
+                                    if os.path.ismount("/mnt/tmp")==True:
+                                        raise RuntimeError("/mnt/tmp should not be mounted")
 
         return result  
 
@@ -110,9 +185,7 @@ class Diskmanager():
         looks for disks which are know to be data disks & are formatted ext4
         return [[$partpath,$gid,$partid,$size,$free]]
         """
-        result=[]
-        for path,size,free,ssd in self.partitionsFind(busy=False,ttype="ext4",ssd=False,prefix="sd",minsize=300,maxsize=5000):
-            
+        result=[item for item in self.partitionsFind(busy=False,ttype="ext4",ssd=False,prefix="sd",minsize=300,maxsize=5000)]
         return result       
 
     def partitionsMount_Ext4Data(self):
