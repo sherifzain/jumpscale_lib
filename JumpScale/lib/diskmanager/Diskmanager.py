@@ -71,7 +71,8 @@ class Diskmanager():
     def _kib_to_sectors(self,device, kib):
         return parted.sizeToSectors(kib, 'KiB', device.sectorSize)
 
-    def partitionsFind(self,mounted=None,ttype=None,ssd=None,prefix="sd",minsize=30,maxsize=5000,devbusy=None,initialize=False,forceinitialize=False):
+    def partitionsFind(self,mounted=None,ttype=None,ssd=None,prefix="sd",minsize=5,maxsize=5000,devbusy=None,\
+            initialize=False,forceinitialize=False):
         """
         looks for disks which are know to be data disks & are formatted ext4
         return [[$partpath,$size,$free,$ssd]]
@@ -79,6 +80,7 @@ class Diskmanager():
         """
         result=[]
         import parted
+        import JumpScale.grid.osis
         import psutil
         p=parted.disk.parted
         result=[]
@@ -143,17 +145,18 @@ class Diskmanager():
                             disko.size=int(disko.size*1024*1024)
                             disko.free=int(disko.free*1024*1024)                        
 
+
                             if (ttype==None or fs==ttype) and size>minsize and size<maxsize:
                                 print "check disk for ssd"
                                 pathssdcheck="/sys/block/%s/queue/rotational"%dev.path.replace("/dev/","").strip()
                                 ssd0=int(j.system.fs.fileGetContents(pathssdcheck))==0
-                                disko.ssd=ssd0                                
+                                disko.ssd=ssd0   
+                                                                                          
                                 if ssd==None or ssd0==ssd:
                                     print "process disk"
                                     # print disko
                                     
                                     hrdpath="%s/disk.hrd"%mountpoint
-
 
                                     if j.system.fs.exists(hrdpath):
                                         hrd=j.core.hrd.getHRD(hrdpath)
@@ -182,7 +185,7 @@ diskinfo.description=
 
 
                                         masterip=j.application.config.get("grid.master.ip")
-                                        client = j.core.osis.getClient(masterip)
+                                        client = j.core.osis.getClient(masterip,user="root")
                                         client_disk=j.core.osis.getClientForCategory(client,"system","disk")
 
                                         disk=client_disk.new()
