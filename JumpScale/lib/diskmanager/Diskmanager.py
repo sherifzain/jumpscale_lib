@@ -80,11 +80,13 @@ class Diskmanager():
         result=[]
         import parted
         import psutil
-        p=parted.disk.parted
         result=[]
         psutilparts=psutil.disk_partitions()
 
-        disko=Disk()
+        import JumpScale.grid.osis
+        masterip=j.application.config.get("grid.master.ip")
+        client = j.core.osis.getClient(masterip)
+        client_disk=j.core.osis.getClientForCategory(client,"system","disk")
 
         def getpsutilpart(partname):
             for part00 in psutilparts:
@@ -93,11 +95,13 @@ class Diskmanager():
             return None
 
         for dev in parted.getAllDevices():
+            disko = client_disk.new()
             path=dev.path
             geom = dev.hardwareGeometry;
             #ssize = dev.sectorSize;
             # size = (geom[0] * geom[1] * geom[2] * ssize) / 1000 / 1000 / 1000;
             # size2=dev.getSize()
+
             disko.model=dev.model
 
             if devbusy==None or dev.busy==devbusy:                    
@@ -117,16 +121,10 @@ class Diskmanager():
                         print "fs:%s"%fs
 
                         partfound=getpsutilpart(partition.path)
+                        disko.partnr = partition.number
                         
                         mountpoint=None
-                        if partfound==None and mounted<>True:
-                            mountpoint="/mnt/tmp"
-                            cmd="mount %s /mnt/tmp"%partition.path
-                            rcode,output=j.system.process.execute(cmd,ignoreErrorOutput=False,dieOnNonZeroExitCode=False,)
-                            if rcode<>0:
-                                #mount did not work
-                                mountpoint==None
-
+                        if partfound==None:
                             disko.mountpoint=None
                             disko.mounted=False
                         else:
@@ -134,7 +132,7 @@ class Diskmanager():
                             disko.mountpoint=mountpoint
                             disko.mounted=True
 
-                        if mountpoint<>None:
+                        if mountpoint:
                             print "mountpoint:%s"%mountpoint                            
                             size, used, free, percent=psutil.disk_usage(mountpoint)
                             disko.free=disko.size*float(1-percent/100)    
@@ -161,8 +159,6 @@ class Diskmanager():
                                         if partnr==0 or forceinitialize:
                                             j.system.fs.remove(hrdpath)
 
-                                    if not j.system.fs.exists(hrdpath) and initialize==False:
-                                        raise RuntimeError("Disks not initialized, there needs to be a disk.hrd in root of partition")
                                     if not j.system.fs.exists(hrdpath) and initialize:
                                         C="""
 diskinfo.partnr=
@@ -181,22 +177,15 @@ diskinfo.description=
                                         hrd.set("diskinfo.epoch",j.base.time.getTimeEpoch())
 
 
-                                        masterip=j.application.config.get("grid.master.ip")
-                                        client = j.core.osis.getClient(masterip)
-                                        client_disk=j.core.osis.getClientForCategory(client,"system","disk")
 
-                                        disk=client_disk.new()
-                                        for key,val in disko.__dict__.iteritems():
-                                            disk.__dict__[key]=val
-
-                                        disk.description=hrd.get("diskinfo.description")
-                                        disk.type=hrd.get("diskinfo.type").split(",")
-                                        disk.type.sort()
-                                        disk.nid=j.application.whoAmI.nid
-                                        disk.gid=j.application.whoAmI.gid
+                                        disko.description=hrd.get("diskinfo.description")
+                                        disko.type=hrd.get("diskinfo.type").split(",")
+                                        disko.type.sort()
+                                        disko.nid=j.application.whoAmI.nid
+                                        disko.gid=j.application.whoAmI.gid
 
 
-                                        guid,new,changed=client_disk.set(disk)
+                                        guid,new,changed=client_disk.set(disko)
                                         disk=client_disk.get(guid)
                                         diskid=disk.id
                                         
@@ -209,7 +198,7 @@ diskinfo.description=
                                         disko.type.sort()
                                         disko.description=hrd.get("diskinfo.description")
                                         print "found disk:\n%s"%(disko)
-                                        result.append(disko)
+                                    result.append(disko)
                                     cmd="umount /mnt/tmp"
                                     j.system.process.execute(cmd,dieOnNonZeroExitCode=False)
                                     if os.path.ismount("/mnt/tmp")==True:
