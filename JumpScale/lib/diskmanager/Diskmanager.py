@@ -142,9 +142,8 @@ class Diskmanager():
                             disko.free=disko.size*float(1-percent/100)    
 
                             size=disko.size
-                            disko.size=int(disko.size*1024*1024)
-                            disko.free=int(disko.free*1024*1024)                        
-
+                            disko.size=int(disko.size*1024)
+                            disko.free=int(disko.free*1024)
 
                             if (ttype==None or fs==ttype) and size>minsize and size<maxsize:
                                 print "check disk for ssd"
