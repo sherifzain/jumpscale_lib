@@ -7,7 +7,7 @@ import os
 class Lxc():
 
     def __init__(self):
-        self.prefix="mach_"
+        self._prefix="mach_"
 
     def _getChildren(self,pid,children):
         process=j.system.process.getProcessObject(pid)
@@ -21,7 +21,7 @@ class Lxc():
         names of running & stopped machines
         @return (running,stopped)
         """
-        cmd="lxc-list"
+        cmd="lxc-ls --fancy"
         resultcode,out=j.system.process.execute(cmd)
 
         stopped = []
@@ -36,76 +36,62 @@ class Lxc():
             else:
                 continue
             name=line.split(" ")[0]
-            if name.find(self.prefix)==0:
-                name=name.replace(self.prefix,"")
-                current.append(int(name))
+            if name.find(self._prefix)==0:
+                name=name.replace(self._prefix,"")
+                current.append(name)
         running.sort()
         stopped.sort()
         return (running,stopped)
 
-    def getip(self,name,fail=True):
-        cmd="lxc-list"
+    def getIp(self,name,fail=True):
+        cmd="lxc-ls --fancy --fancy-format name,ipv4 --running"
         resultcode,out=j.system.process.execute(cmd)
-        name="%s%s"%(self.prefix,name)
-        stopped = []
-        running = []
-        current = None
-        for line in out.split("\n"):
-            line = line.strip()
-            if line.find(name)==0:
-                print "machine found"
-                if line.find("RUNNING")==-1:                
+        lxcname="%s%s"%(self._prefix,name)
+        for line in out.splitlines():
+            lineparts = line.strip().split()
+            if len(lineparts) == 2 and lineparts[0] == lxcname:
+                ip = lineparts[1]
+                if ip == '-':
                     if fail:
-                        print "machine not running,so ip could not be found"
-                        j.application.stop(1)
+                        raise RuntimeError('Machine is not running but has no IP')
                     else:
-                        return ""
-                print "machine running"
-                line=line.split("RUNNING")[1]
-                ip=line.split("-")[0].strip()
+                        ip = None
                 return ip
         if fail:
-            print "machine %s not found"%name
-            j.application.stop(1)
+            raise RuntimeError("machine %s not found"%name)
         else:
-            return ""
+            return None
 
-    def getpid(self,name,fail=True):
-        resultcode,out=j.system.process.execute("lxc-info -n %s%s"%(self.prefix,name))
-        state=None
+    def getPid(self,name,fail=True):
+        resultcode,out=j.system.process.execute("lxc-info -n %s%s -p"%(self._prefix,name))
         pid=0
-        for line in out.split("\n"):
+        for line in out.splitlines():
             line=line.strip().lower()
-            if line=="":
-                continue
-            if line.find("state")==0:
-                state=line.split(":")[1].strip()
-            if state=="running" and line.find("pid")==0:
-                pid=int(line.split(":")[1].strip())
+            name, pid = line.split(':')
+            pid = int(pid.strip())
         if pid==0:
-            print "machine:%s is not running"%name
             if fail:
-                j.application.stop(1)
+                raise RuntimeError("machine:%s is not running"%name)
             else:
                 return 0
         return pid
 
-    def getProcessList(self,name,stdout = True):
+    def getProcessList(self, name, stdout=True):
         """
         @return [["$name",$pid,$mem,$parent],....,[$mem,$cpu]]
         last one is sum of mem & cpu
         """
-        pid = self.getpid(name)
-        children=[]
+        pid = self.getPid(name)
+        children = list()
         children=self._getChildren(pid,children)
-        result=[]
+        result = list()
         pre=""
         mem=0.0
         cpu=0.0
         cpu0=0.0
         prevparent=""
         for child in children:
-            if child.parent.name<>prevparent:
+            if child.parent.name != prevparent:
                 pre+=".."
                 prevparent=child.parent.name
             # cpu0=child.get_cpu_percent()
@@ -128,23 +114,23 @@ class Lxc():
         running,stopped=self.list()
         machines=running+stopped
         if name=="":
-            m=0#max
-            for nr in machines:
-                if j.basetype.integer.check(nr):
-                    if nr>m:
-                        m=nr
-            m=m+1
-            name=m
-        name="%s%s"%(self.prefix,name)
-        cmd="lxc-clone --snapshot -B overlayfs -o %s -n %s"%(base,name)
+            nr=0#max
+            for m in machines:
+                if j.basetype.integer.checkString(m):
+                    if int(m) > nr:
+                        nr=int(m)
+            nr += 1
+            name = nr
+        lxcname="%s%s"%(self._prefix,name)
+        cmd="lxc-clone --snapshot -B overlayfs -o %s -n %s"%(base,lxcname)
         resultcode,out=j.system.process.execute(cmd)
-        cmd="lxc-start -d -n %s"%name
+        cmd="lxc-start -d -n %s"% lxcname
         resultcode,out=j.system.process.execute(cmd)
         start=time.time()
         now=start
-        while now<start+10:    
-            ip=self.getip(m,fail=False)
-            if ip<>"":
+        while now<start+10:
+            ip=self.getIp(name,fail=False)
+            if ip:
                 break
             time.sleep(0.2)
             now=time.time()
@@ -157,31 +143,20 @@ class Lxc():
             print "ip:%s"%ip
         return ip
 
-    def destroyall(self):
+    def destroyAll(self):
         running,stopped=self.list()
         alll=running+stopped
         for item in alll:
-            cmd="lxc-destroy -n %s%s -f"%(self.prefix,item)
-            resultcode,out=j.system.process.execute(cmd)
+            self.destroy(item)
 
     def destroy(self,name):
-        cmd="lxc-destroy -n %s%s -f"%(self.prefix,name)
+        cmd="lxc-destroy -n %s%s -f"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
     def stop(self,name):
-        cmd="lxc-stop -n %s%s"%(self.prefix,name)
+        cmd="lxc-stop -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
     def start(self,name):
-        cmd="lxc-start -n %s%s"%(self.prefix,name)
+        cmd="lxc-start -d -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
-
-
-
-            
-
-                    
-
-
-
-        
