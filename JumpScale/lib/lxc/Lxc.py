@@ -21,7 +21,7 @@ class Lxc():
         names of running & stopped machines
         @return (running,stopped)
         """
-        cmd="lxc-list"
+        cmd="lxc-ls --fancy"
         resultcode,out=j.system.process.execute(cmd)
 
         stopped = []
@@ -44,20 +44,17 @@ class Lxc():
         return (running,stopped)
 
     def getip(self,name,fail=True):
-        cmd="lxc-list"
+        cmd="lxc-ls --fancy"
         resultcode,out=j.system.process.execute(cmd)
-        name="%s%s"%(self.prefix,name)
-        stopped = []
-        running = []
-        current = None
+        lxcname="%s%s"%(self.prefix,name)
         for line in out.split("\n"):
             line = line.strip()
-            if line.find(name)==0:
+            if line.find(lxcname)==0:
                 print "machine found"
                 if line.find("RUNNING")==-1:                
                     if fail:
                         print "machine not running,so ip could not be found"
-                        j.application.stop(1)
+                        raise RuntimeError('Machine %s not runing, so ip could not be found' % name)
                     else:
                         return ""
                 print "machine running"
@@ -66,7 +63,7 @@ class Lxc():
                 return ip
         if fail:
             print "machine %s not found"%name
-            j.application.stop(1)
+            raise RuntimeError('Could not find machine %s' % name)
         else:
             return ""
 
@@ -161,8 +158,7 @@ class Lxc():
         running,stopped=self.list()
         alll=running+stopped
         for item in alll:
-            cmd="lxc-destroy -n %s%s -f"%(self.prefix,item)
-            resultcode,out=j.system.process.execute(cmd)
+            self.destroy(item)
 
     def destroy(self,name):
         cmd="lxc-destroy -n %s%s -f"%(self.prefix,name)
@@ -176,12 +172,3 @@ class Lxc():
         cmd="lxc-start -n %s%s"%(self.prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
-
-
-            
-
-                    
-
-
-
-        
