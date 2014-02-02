@@ -98,7 +98,7 @@ class Row(j.code.classGetBase()):
                 result = result / len(months)
             return result
 
-        #monthAttributes=[item.name for item in self.months[1].PYMODEL_MODEL_INFO.attributes]
+        #monthAttributes=[item.name for item in self.months[1].JSModel_MODEL_INFO.attributes]
         if period == "Y":
             result = [0.0 for item in range(6)]
             for year in range(1, 7):
