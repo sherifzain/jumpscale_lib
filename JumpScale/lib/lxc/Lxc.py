@@ -160,3 +160,28 @@ class Lxc():
     def start(self,name):
         cmd="lxc-start -d -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
+
+    def networkSetPublic(self, name, pubips):
+        machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, name), 'config')
+        bridge = j.application.config.get('lxc.bridge.public')
+        gateway = j.application.config.get('lxc.gateway.public')
+        config = '''
+        ### ADDED BY networkSetPublic ###
+        lxc.network.type = veth
+        lxc.network.flags = up
+        lxc.network.link = %s
+        '''  % bridge
+
+        for pubip in pubips:
+            config += '''lxc.network.ipv4 = %s
+            lxc.network.ipv4.gateway = %s
+            ''' % (pubip, gateway)
+
+        config += '''
+        ### END networkSetPublic ###
+        '''
+
+        j.system.fs.writeFile(machine_cfg_file, config, True)
+
+    def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
+        pass
