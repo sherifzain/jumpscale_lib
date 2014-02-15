@@ -20,19 +20,42 @@ class Nginx(object):
         configfiles = self.remoteApi.run('ls %s' % self.configPath)
         return configfiles.split('  ')
 
-    def configureLB(self, name, webLBPolicy):
-        lbfile = j.system.fs.joinPaths(self.configPath, '%s.conf' % name)
-        config = self._policyToConfig(webLBPolicy)
-        self.remoteApi.run('touch %s' % lbfile)
-        self.remoteApi.file_write(lbfile, config)
-        self.reload()
+    def configure(self, fwObject):
+        json = j.db.serializers.getSerializerType('j')
+        fwDict = json.loads(fwObject)
+        wsForwardRules = fwDict.get('wsForwardRules')
+        configfile = j.system.fs.joinPaths(self.configPath, '%s.conf' % fwDict['name'])
+        config = ''
+        for rule in wsForwardRules:
+            if len(rule['toUrls']) == 1:
+                config += '''server {
+    listen 80;
+    server_name _;
+    location %s {
+        proxy_pass       %s;
+        proxy_set_header Host      $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}''' % (rule['url'], rule['toUrls'][0])
+            else:
+                config += '''server {
+    listen 80;
+    server_name _;
+    upstream %s {
+''' % fwDict['name']
+                for toUrl in rule['toUrls']:
+                    config += '        server %s;\n' % toUrl
+                config += '    }\n'
+                config += '''
+    location %s {
+        proxy_pass  http://%s;
+    }
+}''' % (rule['url'], fwDict['name'])
 
-    def configureWS(self, name, webServicePolicy):
-        wsfile = j.system.fs.joinPaths(self.configPath, '%s.conf' % name)
-        config = self._policyToConfig(webServicePolicy)
-        self.remoteApi.run('touch %s' % wsfile)
-        self.remoteApi.file_write(wsfile, config)
-        self.reload()
+        if config:
+            self.remoteApi.run('touch %s' % configfile)
+            self.remoteApi.file_write(configfile, config)
+            self.reload()
 
     def deleteConfig(self, name):
         configfile = j.system.fs.joinPaths(self.configPath, '%s.conf' % name)
@@ -49,19 +72,5 @@ class Nginx(object):
     def reload(self):
         self.remoteApi.run('service nginx reload')
 
-    def _policyToConfig(self, policy):
-        json = j.db.serializers.getSerializerType('j')
-        policydict = json.loads(policy)
-
-        def _printDict(dictval):
-            result = ''
-            for key, innerval in dictval.iteritems():
-                if type(innerval) is str:
-                    result += '%s %s;\n' % (key, innerval)
-                elif type(innerval) in (list, tuple):
-                    result += '%s %s;\n' % (key, ' '.join(map(lambda x: str(x), innerval)))
-                elif type(innerval) is dict:
-                    result += '%s\n{\n%s}\n' % (key, _printDict(innerval))
-            return result
-
-        return _printDict(policydict)
+    def restart(self):
+        self.remoteApi.run('service nginx restart')
