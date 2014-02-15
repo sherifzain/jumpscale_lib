@@ -170,31 +170,31 @@ class Lxc():
         cmd="lxc-start -d -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
-    def networkSetPublic(self, name, pubips,bridge=None,gateway=None):
+    def networkSetPublic(self, name, pubips, bridge=None, gateway=None):
         machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, name), 'config')
+        cfg_file_contents = j.system.fs.fileGetContents(machine_cfg_file)
+        if cfg_file_contents.find('###networkSetPublic###') != -1:
+            startindex = cfg_file_contents.find('###networkSetPublic###')
+            endindex = cfg_file_contents.find('###networkSetPublic_End###') + 9
+            cfg_file_contents = cfg_file_contents[:startindex] + cfg_file_contents[endindex:]
+            j.system.fs.writeFile(machine_cfg_file, cfg_file_contents)
 
-        # editor=j.codetools.getTextFileEditor(machine_cfg_file)
-
-        if bridge==None:
+        if not bridge:
             bridge = j.application.config.get('lxc.bridge.public')
-        if gateway==None:
+        if not gateway:
             gateway = j.application.config.get('lxc.gateway.public')
         config = '''
 ###networkSetPublic###
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.link = %s
-        '''  % bridge
+lxc.network.ipv4.gateway = %s
+'''  % (bridge, gateway)
 
         for pubip in pubips:
-            config += '''lxc.network.ipv4 = %s
-lxc.network.ipv4.gateway = %s
-            ''' % (pubip, gateway)
+            config += '''lxc.network.ipv4 = %s\n''' % pubip
 
-        config += '''
-###networkSetPublic_End###
-        '''
-
+        config += '###networkSetPublic_End###\n'
         j.system.fs.writeFile(machine_cfg_file, config, True)
 
     def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
