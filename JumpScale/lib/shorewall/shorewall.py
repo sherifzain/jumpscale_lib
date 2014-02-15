@@ -16,12 +16,10 @@ class Shorewall(object):
         j.remote.cuisine.fabric.env['password'] = password
         self.remoteApi.connect(host)
 
-    def configure(self, nicNamePub, nicNameDMZ, fwObject):
+    def configure(self, fwObject):
         policyfile = j.system.fs.joinPaths(self.configPath, 'rules')
         json = j.db.serializers.getSerializerType('j')
         tcpForwardRules = json.loads(fwObject).get('tcpForwardRules')
-        pubIpAddress = netifaces.ifaddresses(nicNamePub)[2][0]['addr']
-        dmzIpAddress = netifaces.ifaddresses(nicNameDMZ)[2][0]['addr']
         config = ''
         for rule in tcpForwardRules:
             config += 'DNAT net loc:%s:%s tcp %s\n' % (rule['toAddr'], rule['toPort'], rule['fromPort'])
