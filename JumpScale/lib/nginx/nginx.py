@@ -38,15 +38,16 @@ class Nginx(object):
     }
 }''' % (rule['url'], rule['toUrls'][0])
             else:
-                config += '''server {
-    listen 80;
-    server_name _;
-    upstream %s {
+                config += '''
+upstream %s {
 ''' % fwDict['name']
                 for toUrl in rule['toUrls']:
-                    config += '        server %s;\n' % toUrl
-                config += '    }\n'
+                    config += '    server %s;\n' % toUrl
+                config += '}\n'
                 config += '''
+server {
+    listen 80;
+    server_name _;
     location %s {
         proxy_pass  http://%s;
     }
