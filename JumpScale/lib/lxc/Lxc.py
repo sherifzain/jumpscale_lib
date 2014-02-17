@@ -3,6 +3,8 @@ from JumpScale import j
 import sys,time
 import JumpScale.lib.diskmanager
 import os
+import JumpScale.baselib.netconfig
+import netaddr
 
 class Lxc():
 
@@ -15,6 +17,39 @@ class Lxc():
         for child in process.get_children():
             children=self._getChildren(child.pid,children)
         return children
+
+    def _get_rootpath(self,name):
+        rootpath=j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, name), 'delta0')
+        return rootpath
+
+
+    def resetNetworkConfigHostSystemDhcpSimple(self,nameserver=None,pubinterface="eth0"):
+        """
+        works on host 
+        will remove all network config (DANGEROUS)
+        will put pubinterface on dhcp
+        will create bridge linked to pub interface with specified privnet
+        gw will be applied
+        """
+        if not nameserver:
+            nameserver=j.application.config.get("lxc.nameserver")
+
+        mgmtnet = netaddr.IPNetwork(j.application.config.get("lxc.management.iprange"))
+        mgmtbridge=j.application.config.get("lxc.bridge.management")
+
+        j.system.netconfig.reset(shutdown=True)        
+        j.system.netconfig.setNameserver(nameserver)
+        j.system.netconfig.enableInterface(pubinterface,start=False,dhcp=False)
+        j.system.netconfig.enableInterfaceBridgeDhcp(mgmtbridge,bridgedev=pubinterface,start=True)
+
+        #look for first ip addr of network
+        ip=netaddr.IPNetwork(mgmtnet)
+
+        mgmtnetIpAddr=str(netaddr.ip.IPAddress(ip.first+1))
+
+        mgmtnet="%s/%s"%(mgmtnetIpAddr,ip.prefixlen)
+
+        j.system.netconfig.addIpToInterface(mgmtbridge,mgmtnet,aliasnr=1,start=True)    
 
     def list(self):
         """
@@ -44,23 +79,17 @@ class Lxc():
         return (running,stopped)
 
     def getIp(self,name,fail=True):
-        cmd="lxc-ls --fancy --fancy-format name,ipv4 --running"
-        resultcode,out=j.system.process.execute(cmd)
-        lxcname="%s%s"%(self._prefix,name)
-        for line in out.splitlines():
-            lineparts = line.strip().split()
-            if len(lineparts) == 2 and lineparts[0] == lxcname:
-                ip = lineparts[1]
-                if ip == '-':
-                    if fail:
-                        raise RuntimeError('Machine is not running but has no IP')
-                    else:
-                        ip = None
-                return ip
-        if fail:
-            raise RuntimeError("machine %s not found"%name)
-        else:
-            return None
+        hrd=self.getConfig(name)
+        return hrd.get("ipaddr")
+
+    def getConfig(self,name):
+        configpath=j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, name),"jumpscaleconfig.hrd")
+        if not j.system.fs.exists(path=configpath):
+            content="""
+ipaddr=
+"""
+            j.system.fs.writeFile(configpath,contents=content)
+        return j.core.hrd.getHRD( path=configpath)
 
     def getPid(self,name,fail=True):
         resultcode,out=j.system.process.execute("lxc-info -n %s%s -p"%(self._prefix,name))
@@ -107,10 +136,13 @@ class Lxc():
             print "TOTAL: mem:%-8s cpu:%-8s" % (mem, cpu)
         return result
 
-    def createMachine(self,name="",stdout=True,base="base"):
+    def create(self,name="",stdout=True,base="base",start=False,nameserver=None):
         """
         @param name if "" then will be an incremental nr
         """
+        print "create:%s"%name
+        if not nameserver:
+            nameserver = j.application.config.get('lxc.nameserver')        
         running,stopped=self.list()
         machines=running+stopped
         if name=="":
@@ -124,25 +156,40 @@ class Lxc():
         lxcname="%s%s"%(self._prefix,name)
         cmd="lxc-clone --snapshot -B overlayfs -o %s -n %s"%(base,lxcname)
         resultcode,out=j.system.process.execute(cmd)
-        cmd="lxc-start -d -n %s"% lxcname
-        resultcode,out=j.system.process.execute(cmd)
-        start=time.time()
-        now=start
-        while now<start+10:
-            ip=self.getIp(name,fail=False)
-            if ip:
-                break
-            time.sleep(0.2)
-            now=time.time()
-        if ip=="":
-            msg= "could not create new machine, ipaddress not found."
-            if stdout:
-                print msg
-            raise RuntimeError(msg)
-        if stdout:
-            print "ip:%s"%ip
-        return ip
+        j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
+        j.system.netconfig.reset()
+        j.system.netconfig.setNameserver(nameserver)
+        j.system.netconfig.root=""#set back to normal
 
+        hrd=self.getConfig(name)
+        ipaddrs=j.application.config.getDict("lxc.management.ipaddr")
+        if ipaddrs.has_key(name):
+            ipaddr=ipaddrs[name]
+        else:
+            #find free ip addr
+            import netaddr
+            
+            existing=[netaddr.ip.IPAddress(item).value for item in  ipaddrs.itervalues() if item.strip()<>""]
+            ip = netaddr.IPNetwork(j.application.config.get("lxc.management.iprange"))
+            for i in range(ip.first+2,ip.last-2):
+                if i not in existing:
+                    ipaddr=str(netaddr.ip.IPAddress(i))
+                    break
+            ipaddrs[name]=ipaddr
+            j.application.config.setDict("lxc.management.ipaddr",ipaddrs)
+
+        mgmtbridge=j.application.config.get("lxc.bridge.management")
+        # mgmtiprange=j.application.config.get("lxc.management.iprange")
+        self.networkSetPrivateOnBridge( name,netname="mgmt0", bridge=mgmtbridge, ipaddresses=["%s/24"%ipaddr]) #@todo make sure other ranges also supported
+
+        #set ipaddr in hrd file
+        hrd.set("ipaddr",ipaddr)
+
+        if start:
+            return self.start(name)
+
+        return self.getIp(name)
+        
     def destroyAll(self):
         running,stopped=self.list()
         alll=running+stopped
@@ -150,13 +197,100 @@ class Lxc():
             self.destroy(item)
 
     def destroy(self,name):
-        cmd="lxc-destroy -n %s%s -f"%(self._prefix,name)
-        resultcode,out=j.system.process.execute(cmd)
-
+        running,stopped=self.list()
+        alll=running+stopped
+        if name in alll:
+            cmd="lxc-destroy -n %s%s -f"%(self._prefix,name)
+            resultcode,out=j.system.process.execute(cmd)
+        #@todo put timeout in
+        while name in alll:
+            running,stopped=self.list()
+            alll=running+stopped
+        
     def stop(self,name):
         cmd="lxc-stop -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
-    def start(self,name):
+    def start(self,name,stdout=True):
+        print "start:%s"%name
         cmd="lxc-start -d -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
+        start=time.time()
+        now=start
+        found=False
+        while now<start+20:
+            running=self.list()[0]
+            if name in running:
+                found=True
+                break
+            time.sleep(0.2)
+            now=time.time()
+        if found==False:
+            msg= "could not start new machine, did not start in 20 sec."
+            if stdout:
+                print msg
+            raise RuntimeError(msg)
+
+    def networkSetPublic(self, machinename,netname="pub0",pubips=[],bridge=None,gateway=None):
+        print "set pub network %s on %s" %(pubips,machinename)
+        machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'config')
+        
+        if not bridge:
+            bridge = j.application.config.get('lxc.bridge.public')
+        if not gateway:
+            gateway = j.application.config.get('lxc.bridge.public.gw')
+            if gateway=="":
+                gateway=None
+
+        config = '''
+lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = %s
+lxc.network.name = %s
+'''  % (bridge, netname)
+
+#         notused="""
+# #lxc.network.hwaddr = 00:FF:12:34:52:79
+# #lxc.network.ipv4 = 192.168.22.1/24
+# #lxc.network.ipv4.gateway = 192.168.22.254
+# """
+
+        ed=j.codetools.getTextFileEditor(machine_cfg_file)
+        ed.setSection(netname,config)        
+
+        #do not do will configure in fs of root of clone
+        # for pubip in pubips:
+        #     config += '''lxc.network.ipv4 = %s\n''' % pubip
+
+        j.system.netconfig.setRoot(self._get_rootpath(machinename)) #makes sure the network config is done on right spot
+        for ipaddr in pubips:        
+            j.system.netconfig.enableInterfaceStatic(dev=netname,ipaddr=ipaddr,gw=gateway,start=False)#do never start because is for lxc container, we only want to manipulate config
+        j.system.netconfig.root=""#set back to normal
+
+
+
+    def networkSetPrivateOnBridge(self, machinename,netname="dmz0", bridge=None, ipaddresses=["192.168.30.20/24"]):
+        print "set private network %s on %s" %(ipaddresses,machinename)
+        machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'config')
+        
+        config = '''
+lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = %s
+lxc.network.name = %s
+'''  % (bridge, netname)
+
+        ed=j.codetools.getTextFileEditor(machine_cfg_file)
+        ed.setSection(netname,config)
+
+        if not bridge:
+            bridge = j.application.config.get('lxc.bridge.public')        
+
+        j.system.netconfig.setRoot(self._get_rootpath(machinename)) #makes sure the network config is done on right spot
+        for ipaddr in ipaddresses:        
+            j.system.netconfig.enableInterfaceBridgeStatic(dev=netname,ipaddr=ipaddr,bridgedev=bridge,gw=None,start=False)
+        j.system.netconfig.root=""#set back to normal
+
+
+    def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
+        raise RuntimeError("not implemented")

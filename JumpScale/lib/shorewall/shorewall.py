@@ -16,25 +16,14 @@ class Shorewall(object):
         j.remote.cuisine.fabric.env['password'] = password
         self.remoteApi.connect(host)
 
-    def configure(self, nicNamePub, nicNameDMZ, SecurityPolicyObject):
-        policyfile = j.system.fs.joinPaths(self.configPath, 'policy')
-        config = self._policyToConfig(SecurityPolicyObject)
+    def configure(self, fwObject):
+        policyfile = j.system.fs.joinPaths(self.configPath, 'rules')
+        json = j.db.serializers.getSerializerType('j')
+        tcpForwardRules = json.loads(fwObject).get('tcpForwardRules')
+        config = ''
+        for rule in tcpForwardRules:
+            config += 'DNAT net loc:%s:%s tcp %s\n' % (rule['toAddr'], rule['toPort'], rule['fromPort'])
+
         self.remoteApi.run('touch %s' % policyfile)
         self.remoteApi.file_write(policyfile, config)
-
-    def _policyToConfig(self, policy):
-        json = j.db.serializers.getSerializerType('j')
-        policydict = json.loads(policy)
-
-        def _printDict(dictval):
-            result = ''
-            for key, innerval in dictval.iteritems():
-                if type(innerval) is str:
-                    result += '%s %s;\n' % (key, innerval)
-                elif type(innerval) in (list, tuple):
-                    result += '%s %s;\n' % (key, ' '.join(map(lambda x: str(x), innerval)))
-                elif type(innerval) is dict:
-                    result += '%s\n{\n%s}\n' % (key, _printDict(innerval))
-            return result
-
-        return _printDict(policydict)
+        self.remoteApi.run('shorewall restart')
