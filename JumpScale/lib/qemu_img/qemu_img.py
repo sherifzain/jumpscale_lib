@@ -1,19 +1,10 @@
 from JumpScale import j
+import JumpScale.baselib.units
 import re
 
 percentrec = re.compile("^\s+\((?P<per>\d+\.\d+)/100%\).*$")
 inforec = re.compile("^(?P<key>\w+(\s+\w+)?):\s+(?P<value>.*)$", re.MULTILINE)
 sizerec = re.compile("^(?P<size>[\d\.]+)(?P<unit>[A-Z])")
-SIZES = ['K', 'M', 'G', 'T']
-
-
-def getSizeInKB(size, unit):
-    while unit != SIZES[0]:
-        size *= 1024
-        unit = SIZES[SIZES.index(unit) - 1]
-    return size
-
-
 
 class QemuImg(object):
 
@@ -190,7 +181,7 @@ class QemuImg(object):
             value = match.group('value')
             sizematch = sizerec.match(value)
             if sizematch:
-                value = getSizeInKB(float(sizematch.group('size')), sizematch.group('unit'))
+                value = j.tools.units.bytes.toSize(float(sizematch.group('size')), sizematch.group('unit'), 'K')
             result[match.group('key')] = value
 
         return result

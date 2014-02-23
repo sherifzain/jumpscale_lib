@@ -104,8 +104,11 @@ class Diskmanager():
 
             if devbusy==None or dev.busy==devbusy:                    
                 if path.find("/dev/%s"%prefix)==0:                        
-                    disk = parted.Disk(dev)
-                    primary_partitions = disk.getPrimaryPartitions()
+                    try:
+                        disk = parted.Disk(dev)
+                        primary_partitions = disk.getPrimaryPartitions()
+                    except parted.DiskLabelException:
+                        primary_partitions = list()
                     for partition in primary_partitions:
                         disko.path=partition.path
                         disko.size=round(partition.getSize(unit="gb"),2)
