@@ -237,6 +237,13 @@ ipaddr=
             if stdout:
                 print msg
             raise RuntimeError(msg)
+    
+        timeout=time.time()+10
+        ipaddr=self.getIp(name)
+        while time.time()<timeout:  
+            if j.system.net.tcpPortConnectionTest(ipaddr,22):
+                return
+        raise RuntimeError("Could not connect to machine %s over port 22 (ssh)"%ipaddr)
 
     def networkSetPublic(self, machinename,netname="pub0",pubips=[],bridge=None,gateway=None):
         print "set pub network %s on %s" %(pubips,machinename)
