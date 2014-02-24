@@ -297,7 +297,7 @@ lxc.network.name = %s
 
         j.system.netconfig.setRoot(self._get_rootpath(machinename)) #makes sure the network config is done on right spot
         for ipaddr in ipaddresses:        
-            j.system.netconfig.enableInterfaceBridgeStatic(dev=netname,ipaddr=ipaddr,bridgedev=bridge,gw=None,start=False)
+            j.system.netconfig.enableInterfaceStatic(dev=netname,ipaddr=ipaddr,gw=None,start=False)
         j.system.netconfig.root=""#set back to normal
 
 
