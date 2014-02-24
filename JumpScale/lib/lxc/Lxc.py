@@ -59,8 +59,6 @@ class Lxc():
         #create mgmt bridge not connected, used to be able to access machines
         j.system.netconfig.enableInterfaceBridgeStatic(dev="dmz0",ipaddr=None,bridgedev=None,gw=None,start=True)
 
-
-
     def list(self):
         """
         names of running & stopped machines
@@ -146,7 +144,7 @@ ipaddr=
             print "TOTAL: mem:%-8s cpu:%-8s" % (mem, cpu)
         return result
 
-    def create(self,name="",stdout=True,base="saucy-amd64-base",start=False,nameserver=None):
+    def create(self,name="",stdout=True,base="saucy-amd64-base",start=False,nameserver="8.8.8.8"):
         """
         @param name if "" then will be an incremental nr
         """
