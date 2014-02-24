@@ -232,6 +232,7 @@ ipaddr=
                 break
             time.sleep(0.2)
             now=time.time()
+            
         if found==False:
             msg= "could not start new machine, did not start in 20 sec."
             if stdout:
@@ -243,6 +244,7 @@ ipaddr=
         while time.time()<timeout:  
             if j.system.net.tcpPortConnectionTest(ipaddr,22):
                 return
+            time.sleep(0.1)
         raise RuntimeError("Could not connect to machine %s over port 22 (ssh)"%ipaddr)
 
     def networkSetPublic(self, machinename,netname="pub0",pubips=[],bridge=None,gateway=None):
