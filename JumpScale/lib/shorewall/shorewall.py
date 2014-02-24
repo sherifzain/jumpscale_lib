@@ -27,3 +27,12 @@ class Shorewall(object):
         self.remoteApi.run('touch %s' % policyfile)
         self.remoteApi.file_write(policyfile, config)
         self.remoteApi.run('shorewall restart')
+
+    def start(self):
+        self.remoteApi.run('shorewall start')
+
+    def stop(self):
+        self.remoteApi.run('shorewall stop')
+
+    def restart(self):
+        self.remoteApi.run('shorewall restart')
