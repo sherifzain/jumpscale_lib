@@ -9,7 +9,7 @@ import netaddr
 class Lxc():
 
     def __init__(self):
-        self._prefix="mach_"
+        self._prefix="" #no longer use prefixes
 
     def _getChildren(self,pid,children):
         process=j.system.process.getProcessObject(pid)
@@ -144,11 +144,15 @@ ipaddr=
             print "TOTAL: mem:%-8s cpu:%-8s" % (mem, cpu)
         return result
 
-    def create(self,name="",stdout=True,base="saucy-amd64-base",start=False,nameserver="8.8.8.8"):
+    def create(self,name="",stdout=True,base="base",start=False,nameserver="8.8.8.8",replace=True):
         """
         @param name if "" then will be an incremental nr
         """
         print "create:%s"%name
+        if replace:
+            if j.system.fs.exists(self._getMachinePath(name)):
+                self.destroy(name)        
+
         if not nameserver:
             nameserver = j.application.config.get('lxc.nameserver')        
         running,stopped=self.list()
@@ -162,8 +166,12 @@ ipaddr=
             nr += 1
             name = nr
         lxcname="%s%s"%(self._prefix,name)
+
         cmd="lxc-clone --snapshot -B overlayfs -o %s -n %s"%(base,lxcname)
         resultcode,out=j.system.process.execute(cmd)
+       
+        self.setConfig(lxcname,base)
+
         j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
         j.system.netconfig.reset()
         j.system.netconfig.setNameserver(nameserver)
@@ -218,7 +226,7 @@ ipaddr=
         cmd="lxc-stop -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
-    def start(self,name,stdout=True):
+    def start(self,name,stdout=True,test=True):
         print "start:%s"%name
         cmd="lxc-start -d -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
@@ -232,15 +240,16 @@ ipaddr=
                 break
             time.sleep(0.2)
             now=time.time()
-            
+
         if found==False:
             msg= "could not start new machine, did not start in 20 sec."
             if stdout:
                 print msg
             raise RuntimeError(msg)
     
-        timeout=time.time()+10
         ipaddr=self.getIp(name)
+        print "test ssh access to %s"%ipaddr
+        timeout=time.time()+10        
         while time.time()<timeout:  
             if j.system.net.tcpPortConnectionTest(ipaddr,22):
                 return
@@ -284,10 +293,17 @@ lxc.network.name = %s
         j.system.netconfig.root=""#set back to normal
 
 
+    def _getMachinePath(self,machinename,append=""):
+        if machinename=="":
+            raise RuntimeError("Cannot be empty")
+        base = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename))
+        if append<>"":
+            base=j.system.fs.joinPaths(base,append)
+        return base
 
     def networkSetPrivateOnBridge(self, machinename,netname="dmz0", bridge=None, ipaddresses=["192.168.30.20/24"]):
         print "set private network %s on %s" %(ipaddresses,machinename)
-        machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'config')
+        machine_cfg_file = self._getMachinePath(machinename,'config')
         
         config = '''
 lxc.network.type = veth
@@ -310,3 +326,44 @@ lxc.network.name = %s
 
     def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
         raise RuntimeError("not implemented")
+
+    def setConfig(self,name,parent):
+        base=self._getMachinePath(name)
+        baseparent=self._getMachinePath(parent)
+        machine_cfg_file = self._getMachinePath(name,'config')
+        C="""
+lxc.mount = $base/fstab
+lxc.tty = 4
+lxc.pts = 1024
+lxc.arch = x86_64
+lxc.cgroup.devices.deny = a
+lxc.cgroup.devices.allow = c *:* m
+lxc.cgroup.devices.allow = b *:* m
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+lxc.cgroup.devices.allow = c 254:0 rm
+lxc.cgroup.devices.allow = c 10:229 rwm
+lxc.cgroup.devices.allow = c 10:200 rwm
+lxc.cgroup.devices.allow = c 1:7 rwm
+lxc.cgroup.devices.allow = c 10:228 rwm
+lxc.cgroup.devices.allow = c 10:232 rwm
+lxc.utsname = $name
+lxc.cap.drop = sys_module
+lxc.cap.drop = mac_admin
+lxc.cap.drop = mac_override
+lxc.cap.drop = sys_time
+lxc.hook.clone = /usr/share/lxc/hooks/ubuntu-cloud-prep
+lxc.rootfs = overlayfs:$baseparent/rootfs:$base/delta0
+lxc.pivotdir = lxc_putold
+"""        
+        C=C.replace("$name",name)    
+        C=C.replace("$baseparent",baseparent)
+        C=C.replace("$base",base)
+        j.system.fs.writeFile(machine_cfg_file,C)
+        
