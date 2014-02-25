@@ -34,6 +34,9 @@ class Lxc():
 
         #generic settings 
         j.system.netconfig.reset(shutdown=True)  
+
+        ovsw=j.application.config.getInt("lxc.openvswitch")==1
+
         nameserver=j.application.config.get("lxc.nameserver")      
         j.system.netconfig.setNameserver(nameserver)
 
@@ -152,7 +155,6 @@ ipaddr=
         if replace:
             if j.system.fs.exists(self._getMachinePath(name)):
                 self.destroy(name)        
-
         if not nameserver:
             nameserver = j.application.config.get('lxc.nameserver')        
         running,stopped=self.list()
@@ -168,10 +170,11 @@ ipaddr=
         lxcname="%s%s"%(self._prefix,name)
 
         cmd="lxc-clone --snapshot -B overlayfs -o %s -n %s"%(base,lxcname)
+        print cmd
         resultcode,out=j.system.process.execute(cmd)
        
-        if lxcname=="base":
-            self._setConfigBase(lxcname,base)
+        # if lxcname=="base":
+        self._setConfig(lxcname,base)
 
         j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
         j.system.netconfig.reset()
@@ -328,7 +331,8 @@ lxc.network.name = %s
     def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
         raise RuntimeError("not implemented")
 
-    def _setConfigBase(self,name,parent):
+    def _setConfig(self,name,parent):
+        print "SET CONFIG"
         base=self._getMachinePath(name)
         baseparent=self._getMachinePath(parent)
         machine_cfg_file = self._getMachinePath(name,'config')
