@@ -170,7 +170,8 @@ ipaddr=
         cmd="lxc-clone --snapshot -B overlayfs -o %s -n %s"%(base,lxcname)
         resultcode,out=j.system.process.execute(cmd)
        
-        self.setConfig(lxcname,base)
+        if lxcname=="base":
+            self._setConfigBase(lxcname,base)
 
         j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
         j.system.netconfig.reset()
@@ -327,7 +328,7 @@ lxc.network.name = %s
     def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
         raise RuntimeError("not implemented")
 
-    def setConfig(self,name,parent):
+    def _setConfigBase(self,name,parent):
         base=self._getMachinePath(name)
         baseparent=self._getMachinePath(parent)
         machine_cfg_file = self._getMachinePath(name,'config')
