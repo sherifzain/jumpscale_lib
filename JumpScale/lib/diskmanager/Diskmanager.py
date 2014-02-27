@@ -134,7 +134,7 @@ class Diskmanager():
 
                             disko.mountpoint=None
                             disko.mounted=False
-                        else:
+                        elif partfound:
                             mountpoint=partfound.mountpoint
                             disko.mountpoint=mountpoint
                             disko.mounted=True
