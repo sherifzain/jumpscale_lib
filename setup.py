@@ -4,8 +4,6 @@
 from setuptools import setup, find_packages
 
 
-
-
 setup(name='JumpScale Libs',
       version='6.0.0',
       description='Python Automation framework',
