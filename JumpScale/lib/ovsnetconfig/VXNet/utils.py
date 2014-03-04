@@ -77,6 +77,15 @@ def destroyBridge(name):
         send_to_syslog("Problem with destruction of bridge %s, err was: %s" % (name,e))
         exit(1)
 
+def addVlanPair(parentbridge, vlanbridge, vlanid):
+    cmd = '%s add-port %s brp-%s tag=%s -- set Interface brp-%s type=patch options:peer=trp-%s' % (vsctl, parentbridge, vlanid, vlanid, vlanid, vlanid)
+    r,s,e = doexec(cmd.split())
+    if r:
+        raise RuntimeError("Add extra vlan pair filed %s" % (e))
+    cmd = '%s add-port %s trp-%s -- set Interface trp-%s type=patch options:peer=brp-%s' % (vsctl, vlanbridge, vlanid, vlanid, vlanid)
+    r,s,e = doexec(cmd.split())
+    if r:
+        raise RuntimeError("Add extra vlan pair filed %s" % (e))
 
 def createNameSpace(name):
     if name not in get_all_namespaces():

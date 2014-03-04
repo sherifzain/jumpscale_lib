@@ -4,6 +4,7 @@ from JumpScale import j
 import VXNet.vxlan as vxlan
 from netaddr import *
 import VXNet.netclasses as netcl
+from VXNet.utils import *
 
 class NetConfigFactory():
 
@@ -31,6 +32,11 @@ class NetConfigFactory():
         br=netcl.Bridge(name)
         br.create()
         br.connect(interface)
+
+    def newVlanBridge(self, name, parentbridge, vlanid):
+        br = netcl.Bridge(name)
+        br.create()
+        addVlanPair(parentbridge, name, vlanid)
 
     def getType(self,interfaceName):
         layout=self.getConfigFromSystem()
