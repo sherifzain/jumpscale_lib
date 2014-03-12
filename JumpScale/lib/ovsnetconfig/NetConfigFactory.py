@@ -25,13 +25,14 @@ class NetConfigFactory():
     def printConfigFromSystem(self):
         pprint_dict(self.getConfigFromSystem())
 
-    def newBridge(self,name,interface):
+    def newBridge(self,name,interface=None):
         """
         @param interface interface where to connect this bridge to
         """
         br=netcl.Bridge(name)
         br.create()
-        br.connect(interface)
+        if interface is not None:
+            br.connect(interface)
 
     def newVlanBridge(self, name, parentbridge, vlanid):
         br = netcl.Bridge(name)
