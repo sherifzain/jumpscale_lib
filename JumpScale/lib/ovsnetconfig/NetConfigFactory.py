@@ -39,8 +39,8 @@ class NetConfigFactory():
         br.create()
         addVlanPair(parentbridge, name, vlanid)
 
-    def newVXLan(self,networkid):
-        vxlan = netcl.VXLan(netcl.NetID(networkid))
+    def newVXlan(self,networkid):
+        vxlan = netcl.VXlan(netcl.NetID(networkid))
         vxlan.create()
         return vxlan.name
 
