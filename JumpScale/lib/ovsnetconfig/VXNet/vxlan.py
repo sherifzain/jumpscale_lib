@@ -66,6 +66,7 @@ class VXNet(object):
                 vxlan.no6()
 
             bridge = VXBridge(self.netid)
+            self.bridge = bridge
             if bridge.name in self.existing.nicdetail:
                 send_to_syslog('Bridge %s exists, not creating' % bridge.name)
             else:
@@ -90,10 +91,11 @@ class VXNet(object):
             vxlan.create()
             vxlan.no6()
             bridge = VXBridge(self.netid)
+            self.bridge = bridge
             bridge.create()
             bridge.connect(vxlan.name)
-            addIPv4(bridge.name, self.ipv4)
-            if not self.ipv6 == None : addIPv6(bridge.name, self.ipv6)
+            if self.ipv4 is not None: addIPv4(bridge.name, self.ipv4)
+            if self.ipv6 is not None: addIPv6(bridge.name, self.ipv6)
         else:
             # no bridge, no namespace, just IP
             vxlan = VXlan(self.netid, self.backend)
