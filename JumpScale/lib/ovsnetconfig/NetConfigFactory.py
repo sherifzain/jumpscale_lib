@@ -46,6 +46,22 @@ class NetConfigFactory():
                 continue
             self._exec("ovs-vsctl del-br %s"%intname,False)
 
+        out=self._exec("virsh net-list")
+        state="start"
+        for line in out.split("\n"):
+            if state=="found":
+                if line.strip()=="":
+                    continue
+                line=line.replace("\t"," ")
+                name=line.split(" ")[0]
+                self._exec("virsh net-destroy %s"%name,False)
+                self._exec("virsh net-undefine %s"%name,False)
+
+            if line.find("----")<>-1:
+                state="found"
+
+        j.system.fs.writeFile(filename="/etc/default/lxc-net",contents="USE_LXC_BRIDGE=\"false\"",append=True) #@todo UGLY use editor !!!
+
         self.getConfigFromSystem(reload=True)
 
         j.system.fs.writeFile(filename="/etc/network/interfaces",contents="auto lo\n iface lo inet loopback\n\n")
