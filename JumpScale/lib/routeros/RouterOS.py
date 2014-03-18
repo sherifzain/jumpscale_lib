@@ -1,10 +1,10 @@
 from JumpScale import j
 # import JumpScale.baselib.remote
-
-class RouterboardFactory(object):
+import time
+class RouterOSFactory(object):
 
     def get(self, host, login,password):
-        return Routerboard(host, login,password)
+        return RouterOS(host, login,password)
 #!/usr/bin/python
 
 import sys, posix, time, md5, binascii, socket, select
@@ -139,41 +139,11 @@ class ApiRos:
             ret += s
         return ret
 
-# def main():
-#     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#     s.connect((sys.argv[1], 8728))  
-#     apiros = ApiRos(s);             
-#     apiros.login(sys.argv[2], sys.argv[3]);
 
-#     inputsentence = []
-
-#     while 1:
-#         r = select.select([s, sys.stdin], [], [], None)
-#         if s in r[0]:
-#             # something to read in socket, read sentence
-#             x = apiros.readSentence()
-
-#         if sys.stdin in r[0]:
-#             # read line from input and strip off newline
-#             l = sys.stdin.readline()
-#             l = l[:-1]
-
-#             # if empty line, send sentence and start with new
-#             # otherwise append to input sentence
-#             if l == '':
-#                 apiros.writeSentence(inputsentence)
-#                 inputsentence = []
-#             else:
-#                 inputsentence.append(l)
-
-# if __name__ == '__main__':
-#     main()
-
-
-class Routerboard(object):
+class RouterOS(object):
 
     def __init__(self, host, login,password):
-        # self.configPath = j.system.fs.joinPaths('/etc', 'Routerboard')
+        # self.configPath = j.system.fs.joinPaths('/etc', 'RouterOS')
         # self.remoteApi = j.remote.cuisine.api
         # j.remote.cuisine.fabric.env['password'] = password
         # self.remoteApi.connect(host)
@@ -184,10 +154,76 @@ class Routerboard(object):
         self.host=host
         self.login=login
         self.password=password
+        self.ftp=None
         if res<>True:
-            raise RuntimeError("Could not login into routerboard: %s"%host)
+            raise RuntimeError("Could not login into RouterOS: %s"%host)
+        self.configpath="/opt/jumpscale/apps/routeros/configs/default/"
 
         inputsentence = []
+
+    ##cant get it to work because of ansi
+    # def initExpect(self):
+    #     e = j.tools.expect.new("ssh %s@%s"%(self.login,self.host))
+    #     # e = j.tools.expect.new("telnet %s"%(self.host))
+    #     # e.pexpect.delaybeforesend = 0
+    #     e.pexpect.logfile = sys.stdout
+    #     # r=e.expect("login:",2)
+    #     # if r<>"E":
+    #     #     #passwd found
+    #     #     e.send(self.login+"\n")
+
+    #     r=e.expect("password:",2)
+    #     if r<>"E":
+    #         #passwd found
+    #         e.send(self.password+"\n")
+    #     # r=e.expect(" >",1)
+    #     # if r=="E":
+    #     print "expect enter"        
+
+    #     r=e.pexpect.expect(["Enter"," >"],2)
+    #     if r==0:
+    #         #means we need to press enter
+    #         # e.pexpect.sendcontrol('m')
+    #         e.pexpect.send("\r")
+    #     elif r==1:
+    #         #we are in
+    #         return
+
+    #     r=e.expect(" >",2)
+    #     print r
+
+    #     from IPython import embed
+    #     print "DEBUG NOW lll"
+    #     embed()
+        
+    #     if e.expect("Enter",2)<>"E":
+    #         print "found enter"
+    #         # e.send("\r\n",newline=False)
+    #         e.pexpect.sendcontrol('m')
+    #         time.sleep(2)
+    #         for i in range(10):
+    #             # e.send("\r\n",newline=False)
+    #             r=e.expect(" >",0.5)
+    #             if r<>"E":
+    #                 break
+    #             print e.receive()
+    #         # time.sleep(1)
+    #         # r=e.expect(" >",2)
+    #         # if r=="E":
+    #         #     raise RuntimeError("could not login to routeros")
+
+    #     from IPython import embed
+    #     print "DEBUG NOW error"
+    #     embed()
+
+            
+
+    #     # password:
+
+    #     from IPython import embed
+    #     print "DEBUG NOW ooo"
+    #     embed()
+        
         
     def do(self,cmd,args={}):
         cmds=[]
@@ -247,6 +283,20 @@ class Routerboard(object):
             item["mask"]=int(item["mask"])
         return r
 
+    def iproute_getall(self,staticOnly=False):
+        r=self.do("/ip/route/getall")
+        nr=0
+        result=[]
+        for item in r:
+            item["nr"]=nr
+            nr+=1
+            if staticOnly:
+                if item["static"]==True:
+                    result.append(item)
+            else:
+                result.append(item)            
+        return result     
+
     def ipaddr_remove(self,ipaddr):
         """
         @ipaddr is without mask e.g. 192.168.7.7
@@ -301,7 +351,89 @@ class Routerboard(object):
         self.download(path, j.system.fs.joinPaths(destinationdir,path))
 
     def download(self,path,dest):
+        if self.ftp==None:
+            self._getFtp()
+        self.ftp.retrbinary('RETR %s'%path, open(dest, 'wb').write)
+
+    def list(self,path):
+        self._getFtp()
+        res=[]
+        def do(arg):
+            if arg in [".",".."]:
+                return
+            res.append(arg)
+        self.ftp.retrlines("NLST /%s"%path,do)
+        return res
+
+    def delfile(self,path,raiseError=False):
+        self._getFtp()
+        res=[]
+        if raiseError:
+            self.ftp.delete(path)
+        else:
+            try:
+                self.ftp.delete(path)
+            except Exception, e:
+                pass
+
+    def _getFtp(self):
         from ftplib import FTP
-        ftp=FTP(host=self.host, user=self.login, passwd=self.password)
-        ftp.retrbinary('RETR %s'%path, open(dest, 'wb').write)
-        ftp.close()
+        self.ftp=FTP(host=self.host, user=self.login, passwd=self.password)
+        
+    def close(self):
+        self.ftp.close()
+
+    def download(self,path,dest,raiseError=False):
+        self._getFtp()
+        j.system.fs.createDir(j.system.fs.getDirName(dest))
+        if raiseError:
+            self.ftp.retrbinary('RETR %s'%path, open(dest, 'wb').write)
+        else:
+            try:
+                print "download '%s'"%path,
+                self.ftp.retrbinary('RETR %s'%path, open(dest, 'wb').write)
+                print
+            except Exception, e:
+                print "ERROR"
+                pass
+
+    def upload(self,path,dest):
+        print "upload: '%s' to '%s'"%(path,dest)
+        self._getFtp()
+        if not j.system.fs.exists(path=path):
+            raise RuntimeError("Cannot find %s"%path)
+        self.ftp.storbinary('STOR %s'%dest, open(path))
+
+    def removeAllFirewallRules(self):
+        cmd="queue tree remove [/queue tree find]"
+        self.executeScript(cmd)
+
+    def removeStaticRoutes(self):
+        cmd="/ip route remove [/ip route find static=yes]"
+        self.executeScript(cmd)
+
+    def uploadExecuteScript(self,name,removeAfter=True):
+        print "EXECUTE SCRIPT:%s"%name
+        name=name+".rsc"
+        src=j.system.fs.joinPaths(self.configpath,name)
+        self.upload(src,name)
+        self.do("/import", args={"file-name":name})
+        self.delfile(name, raiseError=False)
+
+    def executeScript(self,content):
+        if content[0]<>"/":
+            content="/%s"%content
+        name="_tmp_%s"%j.base.idgenerator.generateRandomInt(1,10000)
+        src=j.system.fs.joinPaths(self.configpath,"%s.rsc"%name)
+        j.system.fs.writeFile(filename=src,contents=content)
+        self.uploadExecuteScript(name)
+        j.system.fs.remove(src)
+
+    def uploadFilesFromDir(self,path,dest=""):       
+        for item in j.system.fs.listFilesInDir(j.system.fs.joinPaths(self.configpath,path),False):
+            if dest<>"":
+                dest2=j.system.fs.joinPaths(dest,j.system.fs.getBaseName(item))
+            else:
+                dest2=j.system.fs.getBaseName(item)
+            self.upload(item,dest2)
+
