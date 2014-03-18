@@ -376,6 +376,10 @@ class RouterOS(object):
             except Exception, e:
                 pass
 
+    def mkdir(self, path):
+        self._getFtp()
+        self.ftp.mkd(path)
+
     def _getFtp(self):
         from ftplib import FTP
         self.ftp=FTP(host=self.host, user=self.login, passwd=self.password)
