@@ -78,11 +78,13 @@ def destroyBridge(name):
         exit(1)
 
 def addVlanPair(parentbridge, vlanbridge, vlanid):
-    cmd = '%s add-port %s brp-%s tag=%s -- set Interface brp-%s type=patch options:peer=trp-%s' % (vsctl, parentbridge, vlanid, vlanid, vlanid, vlanid)
+    parentpatchport = '%s-%s' % (vlanbridge, str(vlanid))
+    bridgepatchport = '%s-%s' % (parentbridge, str(vlanid))
+    cmd = '%s add-port %s %s tag=%s -- set Interface %s type=patch options:peer=%s' % (vsctl, parentbridge, parentpatchport, vlanid, parentpatchport, bridgepatchport)
     r,s,e = doexec(cmd.split())
     if r:
         raise RuntimeError("Add extra vlan pair filed %s" % (e))
-    cmd = '%s add-port %s trp-%s -- set Interface trp-%s type=patch options:peer=brp-%s' % (vsctl, vlanbridge, vlanid, vlanid, vlanid)
+    cmd = '%s add-port %s %s -- set Interface %s type=patch options:peer=%s' % (vsctl, vlanbridge, bridgepatchport, bridgepatchport, parentpatchport)
     r,s,e = doexec(cmd.split())
     if r:
         raise RuntimeError("Add extra vlan pair filed %s" % (e))
