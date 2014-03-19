@@ -5,7 +5,7 @@ import VXNet.vxlan as vxlan
 from netaddr import *
 import VXNet.netclasses as netcl
 from VXNet.utils import *
-
+import pprint
 class NetConfigFactory():
 
     def __init__(self):
@@ -63,9 +63,21 @@ class NetConfigFactory():
         self.getConfigFromSystem(reload=True)
 
         j.system.fs.writeFile(filename="/etc/network/interfaces",contents="auto lo\n iface lo inet loopback\n\n")
+   
+    def initNetworkInterfaces(self):
+        """
+        Resets /etc/network/interfaces with a basic configuration
+        """
+        j.system.fs.writeFile(filename="/etc/network/interfaces",contents="auto lo\n iface lo inet loopback\n\n")
+
+    def loadNetworkInterfaces(self):
+        """
+        Reloads the networking configuration which is basicly applying /etc/network/interfaces
+        """
+        j.system.platform.ubuntu.restartService('networking')
 
     def printConfigFromSystem(self):
-        pprint_dict(self.getConfigFromSystem())
+        pprint.pprint(self.getConfigFromSystem())
 
     def newBridge(self,name,interface=None):
         """
@@ -119,6 +131,30 @@ iface $iname inet manual
 
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
         ed.setSection(interfacename,C)
+
+    def setBackplaneNoAddress(self,interfacename="eth0",backplaneId=1):
+        """
+        DANGEROUS, will remove old configuration
+        """
+        C="""
+ auto Backplane$id
+ allow-ovs Backplane$id
+ iface Backplane$id inet manual
+  ovs_type OVSBridge
+  ovs_ports eth7
+
+ allow-Backplane$id $iname
+ iface $iname inet manual
+  ovs_bridge Backplane$id
+  ovs_type OVSPort
+"""
+        C=C.replace("$id", str(backplaneId))
+        C=C.replace("$iname", interfacename)
+
+        ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
+        ed.setSection(interfacename,C)
+
+
 
     def setBackplane(self,interfacename="eth0",backplaneId=1,ipaddr="192.168.10.10/24",gw=""):
         """
