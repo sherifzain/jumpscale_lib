@@ -37,11 +37,9 @@ class NetConfigFactory():
             self._exec("ip link set %s down"%name)
             self._exec("brctl delbr %s"%name)
 
-        self.getConfigFromSystem(reload=True)
-
-        for intname,data in self.getConfigFromSystem().iteritems():
+        for intname,data in self.getConfigFromSystem(reload=True).iteritems():
             if "PHYS" in data["detail"]:
-                self._exec("ip link set %s down"%intname,False)
+                continue
             if intname =="ovs-system":
                 continue
             self._exec("ovs-vsctl del-br %s"%intname,False)
@@ -157,8 +155,19 @@ iface $iname inet manual
         ed.setSection(interfacename,C)
         ed.save()
 
+    def applyconfig(self,interfacenameToExclude=None):
+        """
+        DANGEROUS, will remove old configuration
+        """
+        for intname,data in self.getConfigFromSystem(reload=True).iteritems():
+            if "PHYS" in data["detail"] and intname<>interfacenameToExclude:
+                self._exec("ip link set %s down"%intname,False)
+        
         self._exec("ifdown Backplane%s"%backplaneId, failOnError=False)
         self._exec("ifup Backplane%s"%backplaneId, failOnError=True)
+
+        #@todo need to do more checks here that it came up and retry couple of times if it did not
+        #@ can do this by investigating self.getConfigFromSystem
 
         print self._exec("ovs-vsctl show", failOnError=True)
 
