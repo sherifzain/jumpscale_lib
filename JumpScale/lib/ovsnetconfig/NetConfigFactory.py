@@ -205,11 +205,17 @@ iface $iname inet manual
         
         if backplanename<>None:
             self._exec("ifdown %s"%backplanename, failOnError=False)
-            self._exec("ifup %s"%backplanename, failOnError=True)
+            # self._exec("ifup %s"%backplanename, failOnError=True)
+
+        # j.system.platform.ubuntu.restartService('networking')
 
         #@todo need to do more checks here that it came up and retry couple of times if it did not
         #@ can do this by investigating self.getConfigFromSystem
 
+        print "restarting network, can take a while."
+        j.system.process.executeWithoutPipe("sudo service networking restart")
+
+        print self._exec("ip a", failOnError=True)
         print self._exec("ovs-vsctl show", failOnError=True)
 
 
