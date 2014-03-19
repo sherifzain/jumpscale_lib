@@ -93,9 +93,12 @@ class NetConfigFactory():
         br.create()
         addVlanPair(parentbridge, name, vlanid)
 
-    def ensureVXNet(self, networkid):
-        vxnet = vxlan.VXNet(netcl.NetID(networkid))
+    def ensureVXNet(self, networkid, backend,bridgename=None):
+        vxnet = vxlan.VXNet(networkid, backend)
+        vxnet.innamespace=False
         vxnet.inbridge = True
+        if bridgename:
+            vxnet.bridgename = bridgename
         vxnet.apply()
         return vxnet
         
@@ -206,6 +209,9 @@ iface $iname inet manual
         #@ can do this by investigating self.getConfigFromSystem
 
         print self._exec("ovs-vsctl show", failOnError=True)
+
+
+       
 
 
     
