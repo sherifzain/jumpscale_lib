@@ -22,46 +22,6 @@ class Lxc():
         rootpath=j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, name), 'delta0')
         return rootpath
 
-
-    def resetNetworkConfigHostSystemDhcpSimple(self):
-        """
-        works on host 
-        will remove all network config (DANGEROUS)
-        will put pubinterface on dhcp
-        will create bridge linked to pub interface with specified privnet
-        gw will be applied
-        """
-
-        #generic settings 
-        j.system.netconfig.reset(shutdown=True)  
-
-        ovsw=j.application.config.getInt("lxc.openvswitch")==1
-
-        nameserver=j.application.config.get("lxc.nameserver")      
-        j.system.netconfig.setNameserver(nameserver)
-
-        #start main interface, do not attach ip to it
-        pubinterface=j.application.config.get("lxc.defaults.pubinterface")
-        j.system.netconfig.enableInterface(pubinterface,start=False,dhcp=False) #dont start, bridge will get ip
-
-        #create bride attached to pub ip addr, DHCP will be enabled here otherwise machine cannot go to internet
-        pubBridgeName=j.application.config.get("lxc.bridge.public.name")
-        pubBridgeGW=j.application.config.get("lxc.bridge.public.gw")
-        j.system.netconfig.enableInterfaceBridgeDhcp(pubBridgeName,bridgedev=pubinterface,start=True)
-
-
-        #create mgmt bridge not connected, used to be able to access machines
-        mgmtipRange=j.application.config.get("lxc.management.iprange")
-        #look for first ip addr of network
-        ip=netaddr.IPNetwork(mgmtipRange)
-        mgmtnetIpAddr=str(netaddr.ip.IPAddress(ip.first+1))
-        mgmtnetWithIpAddr="%s/%s"%(mgmtnetIpAddr,ip.prefixlen)
-        j.system.netconfig.enableInterfaceBridgeStatic(dev="mgmt",ipaddr=mgmtnetWithIpAddr,bridgedev=None,gw=None,start=True)
-
-
-        #create mgmt bridge not connected, used to be able to access machines
-        j.system.netconfig.enableInterfaceBridgeStatic(dev="dmz0",ipaddr=None,bridgedev=None,gw=None,start=True)
-
     def list(self):
         """
         names of running & stopped machines

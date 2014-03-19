@@ -44,19 +44,20 @@ class NetConfigFactory():
                 continue
             self._exec("ovs-vsctl del-br %s"%intname,False)
 
-        out=self._exec("virsh net-list")
-        state="start"
-        for line in out.split("\n"):
-            if state=="found":
-                if line.strip()=="":
-                    continue
-                line=line.replace("\t"," ")
-                name=line.split(" ")[0]
-                self._exec("virsh net-destroy %s"%name,False)
-                self._exec("virsh net-undefine %s"%name,False)
+        out=self._exec("virsh net-list",False)
+        if out.find("virsh: not found")==-1:    
+            state="start"
+            for line in out.split("\n"):
+                if state=="found":
+                    if line.strip()=="":
+                        continue
+                    line=line.replace("\t"," ")
+                    name=line.split(" ")[0]
+                    self._exec("virsh net-destroy %s"%name,False)
+                    self._exec("virsh net-undefine %s"%name,False)
 
-            if line.find("----")<>-1:
-                state="found"
+                if line.find("----")<>-1:
+                    state="found"
 
         j.system.fs.writeFile(filename="/etc/default/lxc-net",contents="USE_LXC_BRIDGE=\"false\"",append=True) #@todo UGLY use editor !!!
 
@@ -112,61 +113,61 @@ class NetConfigFactory():
             return interf["params"]["type"]
         return None
         
-    def setBackplaneDhcp(self,interfacename="eth0",backplaneId=1):
+    def setBackplaneDhcp(self,interfacename="eth0",backplanename="Public"):
         """
         DANGEROUS, will remove old configuration
         """
         C="""
-auto Backplane$id
-allow-ovs Backplane1
-iface Backplane$id inet dhcp
+auto $BPNAME
+allow-ovs $BPNAME
+iface $BPNAME inet dhcp
  dns-nameserver 8.8.8.8 8.8.4.4
  ovs_type OVSBridge
  ovs_ports $iname
 
-allow-Backplane$id $iname
+allow-$BPNAME $iname
 iface $iname inet manual
- ovs_bridge Backplane1
+ ovs_bridge $BPNAME
  ovs_type OVSPort
 """
-        C=C.replace("$id", str(backplaneId))
+        C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
 
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
-        ed.setSection(interfacename,C)
+        ed.setSection(backplanename,C)
 
-    def setBackplaneNoAddress(self,interfacename="eth0",backplaneId=1):
+    def setBackplaneNoAddress(self,interfacename="eth0",backplanename=1):
         """
         DANGEROUS, will remove old configuration
         """
         C="""
- auto Backplane$id
- allow-ovs Backplane$id
- iface Backplane$id inet manual
+ auto $BPNAME
+ allow-ovs $BPNAME
+ iface $BPNAME inet manual
   ovs_type OVSBridge
   ovs_ports eth7
 
- allow-Backplane$id $iname
+ allow-$BPNAME $iname
  iface $iname inet manual
-  ovs_bridge Backplane$id
+  ovs_bridge $BPNAME
   ovs_type OVSPort
 """
-        C=C.replace("$id", str(backplaneId))
+        C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
 
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
-        ed.setSection(interfacename,C)
+        ed.setSection(backplanename,C)
 
 
 
-    def setBackplane(self,interfacename="eth0",backplaneId=1,ipaddr="192.168.10.10/24",gw=""):
+    def setBackplane(self,interfacename="eth0",backplanename=1,ipaddr="192.168.10.10/24",gw=""):
         """
         DANGEROUS, will remove old configuration
         """
         C="""
-auto Backplane$id
-allow-ovs Backplane1
-iface Backplane$id inet static
+auto $BPNAME
+allow-ovs $BPNAME
+iface $BPNAME inet static
  address $ipbase 
  netmask $mask
  dns-nameserver 8.8.8.8 8.8.4.4
@@ -174,14 +175,14 @@ iface Backplane$id inet static
  ovs_ports $iname
  $gw
 
-allow-Backplane$id $iname
+allow-$BPNAME $iname
 iface $iname inet manual
- ovs_bridge Backplane1
+ ovs_bridge $BPNAME
  ovs_type OVSPort
 """
         n=netaddr.IPNetwork(ipaddr)
 
-        C=C.replace("$id", str(backplaneId))
+        C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
         C=C.replace("$ipbase", str(n.ip))
         C=C.replace("$mask", str(n.netmask))
@@ -191,10 +192,10 @@ iface $iname inet manual
             C=C.replace("$gw", "")
 
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
-        ed.setSection(interfacename,C)
+        ed.setSection(backplanename,C)
         ed.save()
 
-    def applyconfig(self,interfacenameToExclude=None):
+    def applyconfig(self,interfacenameToExclude=None,backplanename=None):
         """
         DANGEROUS, will remove old configuration
         """
@@ -202,8 +203,9 @@ iface $iname inet manual
             if "PHYS" in data["detail"] and intname<>interfacenameToExclude:
                 self._exec("ip link set %s down"%intname,False)
         
-        self._exec("ifdown Backplane%s"%backplaneId, failOnError=False)
-        self._exec("ifup Backplane%s"%backplaneId, failOnError=True)
+        if backplanename<>None:
+            self._exec("ifdown %s"%backplanename, failOnError=False)
+            self._exec("ifup %s"%backplanename, failOnError=True)
 
         #@todo need to do more checks here that it came up and retry couple of times if it did not
         #@ can do this by investigating self.getConfigFromSystem
