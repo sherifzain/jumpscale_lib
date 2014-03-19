@@ -158,6 +158,32 @@ iface $iname inet manual
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
         ed.setSection(backplanename,C)
 
+    def configureStaticAddress(self,interfacename="eth0",ipaddr="192.168.10.10/24",gw=None):
+        """
+        Configure a static address
+        """
+        C="""
+auto $interface
+allow-ovs $interface
+iface $interface inet static
+ address $ipbase 
+ netmask $mask
+ $gw
+"""
+        n=netaddr.IPNetwork(ipaddr)
+
+        C=C.replace("$interface", interfacename)
+        C=C.replace("$ipbase", str(n.ip))
+        C=C.replace("$mask", str(n.netmask))
+        if gw:
+            C=C.replace("$gw", "gateway %s"%gw)
+        else:
+            C=C.replace("$gw", "")
+
+        ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
+        ed.setSection(interfacename,C)
+        ed.save()
+
 
 
     def setBackplane(self,interfacename="eth0",backplanename=1,ipaddr="192.168.10.10/24",gw=""):
