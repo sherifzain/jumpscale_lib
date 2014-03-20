@@ -94,7 +94,7 @@ class NetConfigFactory():
         br.create()
         addVlanPair(parentbridge, name, vlanid)
 
-    def ensureVXNet(self, networkid, backend,bridgename=None):
+    def ensureVXNet(self, networkid, backend):
         vxnet = vxlan.VXNet(networkid, backend)
         vxnet.innamespace=False
         vxnet.inbridge = True
