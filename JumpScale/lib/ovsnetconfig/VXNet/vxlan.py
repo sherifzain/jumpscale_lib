@@ -90,10 +90,7 @@ class VXNet(object):
             vxlan = VXlan(self.netid, self.backend)
             vxlan.create()
             vxlan.no6()
-            if self.bridgename:
-                bridge = Bridge(self.bridgename)
-            else:
-                bridge = VXBridge(self.netid)
+            bridge = VXBridge(self.netid)
             self.bridge = bridge
             bridge.create()
             bridge.connect(vxlan.name)

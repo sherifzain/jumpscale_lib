@@ -98,11 +98,22 @@ class NetConfigFactory():
         vxnet = vxlan.VXNet(networkid, backend)
         vxnet.innamespace=False
         vxnet.inbridge = True
-        if bridgename not None:
-            vxnet.bridgename = bridgename
         vxnet.apply()
         return vxnet
-        
+
+    def createVXLanBridge(self, networkid, backend,bridgename=None):
+        """
+        Creates a proper vxlan interface and bridge based on a backplane
+        """
+        networkoid = netcl.NetID(networkid)
+        vxlan = netcl.VXlan(networkoid, backend)
+        vxlan.create()
+        vxlan.no6()
+        bridge = netcl.Bridge(bridgename)
+        bridge.create()
+        bridge.connect(vxlan.name)
+        return vxlan
+    
 
     def getType(self,interfaceName):
         layout=self.getConfigFromSystem()
