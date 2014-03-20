@@ -98,7 +98,7 @@ class NetConfigFactory():
         vxnet = vxlan.VXNet(networkid, backend)
         vxnet.innamespace=False
         vxnet.inbridge = True
-        if bridgename:
+        if bridgename not None:
             vxnet.bridgename = bridgename
         vxnet.apply()
         return vxnet
