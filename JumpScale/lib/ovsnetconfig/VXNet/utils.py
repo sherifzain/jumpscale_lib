@@ -77,7 +77,7 @@ def destroyBridge(name):
         raise RuntimeError("Problem with destruction of bridge %s, err was: %s" % (name,e))
 
 
-def addVlanPair(parentbridge, vlanbridge, vlanid):
+def addVlanPatch(parentbridge, vlanbridge, vlanid):
     parentpatchport = '%s-%s' % (vlanbridge, str(vlanid))
     bridgepatchport = '%s-%s' % (parentbridge, str(vlanid))
     cmd = '%s add-port %s %s tag=%s -- set Interface %s type=patch options:peer=%s' % (vsctl, parentbridge, parentpatchport, vlanid, parentpatchport, bridgepatchport)
@@ -199,7 +199,7 @@ def disable_ipv6(interface):
         cmd = 'sysctl -w net.ipv6.conf.%s.disable_ipv6=1' % interface
         r,s,e = doexec(cmd.split())
 
-def setMTU(interfacce,mtu):
+def setMTU(interface,mtu):
     cmd = 'ip link set %s mtu %s' % (interface,mtu)
     r,s,e = doexec(cmd.split())
     if r:
