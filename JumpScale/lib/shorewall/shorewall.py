@@ -36,3 +36,6 @@ class Shorewall(object):
 
     def restart(self):
         self.remoteApi.run('shorewall restart')
+
+    def status(self):
+        return 'stopped' not in self.remoteApi.run('shorewall status', warn_only=True)

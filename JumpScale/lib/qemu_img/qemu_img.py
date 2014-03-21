@@ -169,7 +169,7 @@ class QemuImg(object):
         if diskImageFormat:
             command = '%s -f %s' % (command, diskImageFormat)
 
-        command = '%s %s' % (command, fileName)
+        command = '%s "%s"' % (command, fileName)
 
         exitCode, output = j.system.process.execute(command, outputToStdout=False, dieOnNonZeroExitCode=False)
 

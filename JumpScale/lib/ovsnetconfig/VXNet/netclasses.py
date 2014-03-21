@@ -31,7 +31,7 @@ class Bridge(object):
 
 class VXBridge(Bridge):
     def __init__(self,oid):
-        self.name = 'br-' + oid.tostring()
+        self.name = 'space_' + oid.tostring()
 
 class NameSpace(object):
     def __init__(self, name):
