@@ -27,7 +27,6 @@ class NetConfigFactory():
         rc,out=j.system.process.execute(cmd,dieOnNonZeroExitCode=failOnError)        
         return out
         
-
     def removeOldConfig(self):
         cmd="brctl show"
         for line in self._exec(cmd).split("\n"):
@@ -114,7 +113,6 @@ class NetConfigFactory():
         bridge.connect(vxlan.name)
         return vxlan
     
-
     def getType(self,interfaceName):
         layout=self.getConfigFromSystem()
         if not layout.has_key(interfaceName):

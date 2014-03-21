@@ -115,8 +115,7 @@ ipaddr=
         if replace:
             if j.system.fs.exists(self._getMachinePath(name)):
                 self.destroy(name)        
-        if not nameserver:
-            nameserver = j.application.config.get('lxc.nameserver')        
+
         running,stopped=self.list()
         machines=running+stopped
         if name=="":
@@ -142,24 +141,23 @@ ipaddr=
         j.system.netconfig.root=""#set back to normal
 
         hrd=self.getConfig(name)
-        ipaddrs=j.application.config.getDict("lxc.management.ipaddr")
+        ipaddrs=j.application.config.getDict("lxc.mgmt.ipaddresses")
         if ipaddrs.has_key(name):
             ipaddr=ipaddrs[name]
         else:
             #find free ip addr
-            import netaddr
-            
+            import netaddr            
             existing=[netaddr.ip.IPAddress(item).value for item in  ipaddrs.itervalues() if item.strip()<>""]
-            ip = netaddr.IPNetwork(j.application.config.get("lxc.management.iprange"))
+            ip = netaddr.IPNetwork(j.application.config.get("lxc.mgmt.ip"))
             for i in range(ip.first+2,ip.last-2):
                 if i not in existing:
                     ipaddr=str(netaddr.ip.IPAddress(i))
                     break
             ipaddrs[name]=ipaddr
-            j.application.config.setDict("lxc.management.ipaddr",ipaddrs)
+            j.application.config.setDict("lxc.mgmt.ipaddresses",ipaddrs)
 
-        # mgmtiprange=j.application.config.get("lxc.management.iprange")
-        self.networkSetPrivateOnBridge( name,netname="mgmt0", bridge="mgmt", ipaddresses=["%s/24"%ipaddr]) #@todo make sure other ranges also supported
+        ## mgmtiprange=j.application.config.get("lxc.management.iprange")
+        # self.networkSet( name,netname="mgmt0", bridge="mgmt", ipaddresses=["%s/24"%ipaddr]) #@todo make sure other ranges also supported
 
         #set ipaddr in hrd file
         hrd.set("ipaddr",ipaddr)
@@ -220,36 +218,38 @@ ipaddr=
             time.sleep(0.1)
         raise RuntimeError("Could not connect to machine %s over port 22 (ssh)"%ipaddr)
 
-    def networkSetPublic(self, machinename,netname="pub0",pubips=[],bridge=None,gateway=None):
+    def networkSet(self, machinename,netname="pub0",pubips=[],bridge="Public",gateway=None):
         print "set pub network %s on %s" %(pubips,machinename)
         machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'config')
+        machine_ovs_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'ovsbr_%s'%bridge)
         
-        if not bridge:
-            bridge = j.application.config.get('lxc.bridge.public')
-        if not gateway:
-            gateway = j.application.config.get('lxc.bridge.public.gw')
-            if gateway=="":
-                gateway=None
+        # mgmt = j.application.config.get('lxc.mgmt.ip')
+        # netaddr.IPNetwork(mgmt)
 
         config = '''
 lxc.network.type = veth
 lxc.network.flags = up
-lxc.network.link = %s
+lxc.network.veth.pair = %s_%s
 lxc.network.name = %s
-'''  % (bridge, netname)
+lxc.network.script.up = /var/lib/lxc/%s/ovsbr_%s
+lxc.network.script.down = /var/lib/lxc/%s/ovsbr_%s
+'''  % (machinename,netname,netname,machinename,bridge,machinename,bridge)
 
-#         notused="""
-# #lxc.network.hwaddr = 00:FF:12:34:52:79
-# #lxc.network.ipv4 = 192.168.22.1/24
-# #lxc.network.ipv4.gateway = 192.168.22.254
-# """
+        Covs="""
+#!/bin/bash
+if [ "$3" = "up" ] ; then
+/usr/bin/ovs-vsctl --may-exist add-port %s $5
+else
+/usr/bin/ovs-vsctl --if-exists del-port %s $5
+fi        
+""" % (bridge,bridge)
+
+        j.system.fs.writeFile(filename=machine_ovs_file,contents=Covs)
+
+        j.system.process.execute("chmod 744 %s"%machine_ovs_file)
 
         ed=j.codetools.getTextFileEditor(machine_cfg_file)
         ed.setSection(netname,config)        
-
-        #do not do will configure in fs of root of clone
-        # for pubip in pubips:
-        #     config += '''lxc.network.ipv4 = %s\n''' % pubip
 
         j.system.netconfig.setRoot(self._get_rootpath(machinename)) #makes sure the network config is done on right spot
         for ipaddr in pubips:        
@@ -265,28 +265,6 @@ lxc.network.name = %s
             base=j.system.fs.joinPaths(base,append)
         return base
 
-    def networkSetPrivateOnBridge(self, machinename,netname="dmz0", bridge=None, ipaddresses=["192.168.30.20/24"]):
-        print "set private network %s on %s" %(ipaddresses,machinename)
-        machine_cfg_file = self._getMachinePath(machinename,'config')
-        
-        config = '''
-lxc.network.type = veth
-lxc.network.flags = up
-lxc.network.link = %s
-lxc.network.name = %s
-'''  % (bridge, netname)
-
-        ed=j.codetools.getTextFileEditor(machine_cfg_file)
-        ed.setSection(netname,config)
-
-        if not bridge:
-            bridge = j.application.config.get('lxc.bridge.public')        
-
-        j.system.netconfig.setRoot(self._get_rootpath(machinename)) #makes sure the network config is done on right spot
-        for ipaddr in ipaddresses:        
-            j.system.netconfig.enableInterfaceStatic(dev=netname,ipaddr=ipaddr,gw=None,start=False)
-        j.system.netconfig.root=""#set back to normal
-
 
     def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
         raise RuntimeError("not implemented")
@@ -297,7 +275,6 @@ lxc.network.name = %s
         baseparent=self._getMachinePath(parent)
         machine_cfg_file = self._getMachinePath(name,'config')
         C="""
-lxc.mount = $base/fstab
 lxc.tty = 4
 lxc.pts = 1024
 lxc.arch = x86_64
@@ -326,9 +303,15 @@ lxc.cap.drop = sys_time
 lxc.hook.clone = /usr/share/lxc/hooks/ubuntu-cloud-prep
 lxc.rootfs = overlayfs:$baseparent/rootfs:$base/delta0
 lxc.pivotdir = lxc_putold
+
+lxc.mount.entry=/var/lib/lxc/jumpscale $base/rootfs/jumpscale none defaults,bind 0 0
+lxc.mount.entry=/var/lib/lxc/shared $base/rootfs/shared none defaults,bind 0 0
+lxc.mount = $base/fstab
 """        
         C=C.replace("$name",name)    
         C=C.replace("$baseparent",baseparent)
         C=C.replace("$base",base)
         j.system.fs.writeFile(machine_cfg_file,C)
+        j.system.fs.createDir("%s/delta0/jumpscale"%base)
+        j.system.fs.createDir("%s/delta0/shared"%base)
         
