@@ -242,19 +242,19 @@ iface $iname inet manual
         """
         for intname,data in self.getConfigFromSystem(reload=True).iteritems():
             if "PHYS" in data["detail"] and intname<>interfacenameToExclude:
+                self._exec("ip addr flush dev %s" % intname, False)
                 self._exec("ip link set %s down"%intname,False)
         
         if backplanename<>None:
             self._exec("ifdown %s"%backplanename, failOnError=False)
             # self._exec("ifup %s"%backplanename, failOnError=True)
 
-        # j.system.platform.ubuntu.restartService('networking')
-
         #@todo need to do more checks here that it came up and retry couple of times if it did not
         #@ can do this by investigating self.getConfigFromSystem
 
         print "restarting network, can take a while."
         j.system.process.executeWithoutPipe("sudo service networking restart")
+
 
         print self._exec("ip a", failOnError=True)
         print self._exec("ovs-vsctl show", failOnError=True)
