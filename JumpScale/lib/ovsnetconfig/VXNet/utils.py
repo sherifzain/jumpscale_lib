@@ -138,14 +138,14 @@ def createVXlan(vxname,vxid,multicast,vxbackend):
     r,s,e = doexec(cmd.split())
     ip_link_set(vxname,'mtu 1500 up')
     if r:
-        send_to_syslog("Problem with creation of vxlan %s, err was: %s" % (vxname ,e))
+        send_to_syslog("Problem with creation of vxlan %s, err was: %s" % (vxname ,e.readlines()))
 
 
 def destroyVXlan(name):
     cmd = '%s link del %s ' %(ip, name)
     r,s,e = doexec(cmd.split())
     if r:
-        send_to_syslog("Problem with destruction of Veth pair %s, err was: %s" % (name,e))
+        send_to_syslog("Problem with destruction of Veth pair %s, err was: %s" % (name,e.readlines()))
         exit(1)
 
 
