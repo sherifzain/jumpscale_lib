@@ -3,7 +3,7 @@ __author__ = 'delandtj'
 from utils import *
 
 class VXlan(object):
-    def __init__(self,oid,backend='vxbackend'):
+    def __init__(self,oid,backend='Backplane1'):
         def bytes(num):
             return num >> 8, num & 0xFF
         self.multicastaddr = '239.0.%s.%s' % bytes(oid.oid)
