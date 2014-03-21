@@ -74,8 +74,8 @@ def destroyBridge(name):
     cmd = '%s --may-exist del-br %s' % (vsctl, name)
     r,s,e = doexec(cmd.split())
     if r:
-        send_to_syslog("Problem with destruction of bridge %s, err was: %s" % (name,e))
-        exit(1)
+        raise RuntimeError("Problem with destruction of bridge %s, err was: %s" % (name,e))
+
 
 
 def createNameSpace(name):
@@ -96,10 +96,10 @@ def destroyNameSpace(name):
 
 def createVethPair(left,right):
     cmd = '%s link add %s type veth peer name %s' %(ip, left, right)
+    allifaces = get_all_ifaces()
     if left in allifaces or right in allifaces:
         # one of them already exists
         send_to_syslog("Problem with creation of vet pair %s, %s :one of them exists" %(left,right))
-        exit(1)
     r,s,e = doexec(cmd.split())
     # wait for it to come up
     time.sleep(.2)
@@ -112,8 +112,8 @@ def destroyVethPair(left):
     cmd = '%s link del %s ' %(ip, left)
     r,s,e = doexec(cmd.split())
     if r:
-        send_to_syslog("Problem with destruction of Veth pair %s, err was: %s" % (left,e))
-        exit(255)
+        raise RuntimeError("Problem with destruction of Veth pair %s, err was: %s" % (left,e))
+
 
 
 def createVXlan(vxname,vxid,multicast,vxbackend):
@@ -149,7 +149,7 @@ def addIPv4(interface,ipobj,namespace=None):
         cmd = '%s addr add %s/%s dev %s' % (ip, ipv4addr, netmask, interface)
     r,s,e = doexec(cmd.split())
     if r:
-        send_to_syslog('Clould not add IP %s to interface %s ' % (ipv4addr, interface))
+        send_to_syslog('Could not add IP %s to interface %s ' % (ipv4addr, interface))
     return r,e
 
 
@@ -184,11 +184,12 @@ def connectIfToNameSpace(nsname,interface):
 
 
 def disable_ipv6(interface):
-    if interface in allifaces:
+    if interface in get_all_ifaces():
         cmd = 'sysctl -w net.ipv6.conf.%s.disable_ipv6=1' % interface
         r,s,e = doexec(cmd.split())
 
-allifaces = get_all_ifaces()
-allnamespaces = get_all_namespaces()
-
-
+def setMTU(interfacce,mtu):
+    cmd = 'ip link set %s mtu %s' % (interface,mtu)
+    r,s,e = doexec(cmd.split())
+    if r:
+        raise RuntimeError('Could not set %s to MTU %s' %(interface,mtu))
