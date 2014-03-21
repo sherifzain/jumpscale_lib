@@ -10,6 +10,7 @@ class NetConfigFactory():
 
     def __init__(self):
         self._layout=None
+        self.PHYSMTU = 2000 # will fit all switches
 
 
     def getConfigFromSystem(self,reload=False):
@@ -60,7 +61,7 @@ class NetConfigFactory():
 
         j.system.fs.writeFile(filename="/etc/default/lxc-net",contents="USE_LXC_BRIDGE=\"false\"",append=True) #@todo UGLY use editor !!!
 
-        self.getConfigFromSystem(reload=True)
+        # Not used and expensive self.getConfigFromSystem(reload=True)
 
         j.system.fs.writeFile(filename="/etc/network/interfaces",contents="auto lo\n iface lo inet loopback\n\n")
    
@@ -91,7 +92,7 @@ class NetConfigFactory():
     def newVlanBridge(self, name, parentbridge, vlanid):
         br = netcl.Bridge(name)
         br.create()
-        addVlanPair(parentbridge, name, vlanid)
+        addVlanPatch(parentbridge, name, vlanid)
 
     def ensureVXNet(self, networkid, backend):
         vxnet = vxlan.VXNet(networkid, backend)
@@ -138,9 +139,11 @@ allow-$BPNAME $iname
 iface $iname inet manual
  ovs_bridge $BPNAME
  ovs_type OVSPort
+ up ip link set $iname mtu $MTU
 """
         C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
+        C=C.replace("$MTU", self.PHYSMTU)
 
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
         ed.setSection(backplanename,C)
@@ -150,20 +153,21 @@ iface $iname inet manual
         DANGEROUS, will remove old configuration
         """
         C="""
- auto $BPNAME
- allow-ovs $BPNAME
- iface $BPNAME inet manual
+auto $BPNAME
+allow-ovs $BPNAME
+iface $BPNAME inet manual
   ovs_type OVSBridge
   ovs_ports eth7
 
- allow-$BPNAME $iname
- iface $iname inet manual
+allow-$BPNAME $iname
+iface $iname inet manual
   ovs_bridge $BPNAME
   ovs_type OVSPort
+  up ip link set $iname mtu $MTU
 """
         C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
-
+        C=C.replace("$MTU", self.PHYSMTU)
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
         ed.setSection(backplanename,C)
 
@@ -214,6 +218,7 @@ allow-$BPNAME $iname
 iface $iname inet manual
  ovs_bridge $BPNAME
  ovs_type OVSPort
+ up ip link set $iname mtu $MTU
 """
         n=netaddr.IPNetwork(ipaddr)
 
@@ -221,6 +226,7 @@ iface $iname inet manual
         C=C.replace("$iname", interfacename)
         C=C.replace("$ipbase", str(n.ip))
         C=C.replace("$mask", str(n.netmask))
+        C=C.replace("$MTU", self.PHYSMTU)
         if gw<>"" and gw<>None:
             C=C.replace("$gw", "gateway %s"%gw)
         else:
