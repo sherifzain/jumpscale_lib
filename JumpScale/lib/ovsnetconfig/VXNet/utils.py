@@ -179,7 +179,6 @@ def addIPv6(interface, ipobj, namespace=None):
     return r, e
 
 
-
 def connectIfToBridge(bridge,interface):
     cmd = '%s --may-exist add-port %s %s' %(vsctl,bridge,interface)
     r,s,e = doexec(cmd.split())
