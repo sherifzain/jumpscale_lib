@@ -143,7 +143,7 @@ iface $iname inet manual
 """
         C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
-        C=C.replace("$MTU", self.PHYSMTU)
+        C=C.replace("$MTU", str(self.PHYSMTU))
 
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
         ed.setSection(backplanename,C)
@@ -167,7 +167,7 @@ iface $iname inet manual
 """
         C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
-        C=C.replace("$MTU", self.PHYSMTU)
+        C=C.replace("$MTU", str(self.PHYSMTU))
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
         ed.setSection(backplanename,C)
 
@@ -226,7 +226,7 @@ iface $iname inet manual
         C=C.replace("$iname", interfacename)
         C=C.replace("$ipbase", str(n.ip))
         C=C.replace("$mask", str(n.netmask))
-        C=C.replace("$MTU", self.PHYSMTU)
+        C=C.replace("$MTU", str(self.PHYSMTU))
         if gw<>"" and gw<>None:
             C=C.replace("$gw", "gateway %s"%gw)
         else:
