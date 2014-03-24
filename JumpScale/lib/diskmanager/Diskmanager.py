@@ -134,8 +134,6 @@ class Diskmanager():
         result=[]
         psutilparts=psutil.disk_partitions()
 
-        disko=Disk()
-
         def getpsutilpart(partname):
             for part00 in psutilparts:
                 if part00.device==partname:
@@ -143,6 +141,7 @@ class Diskmanager():
             return None
 
         for dev in parted.getAllDevices():
+            disko=Disk()
             path=dev.path
             geom = dev.hardwareGeometry;
             #ssize = dev.sectorSize;
@@ -167,10 +166,7 @@ class Diskmanager():
                             fs = "unknown"
 
                         disko.fs=fs
-                        print "fs:%s"%fs
-
                         partfound=getpsutilpart(partition.path)
-                        
                         mountpoint=None
                         if partfound==None and mounted<>True:
                             mountpoint="/mnt/tmp"
@@ -201,11 +197,8 @@ class Diskmanager():
                                 pathssdcheck="/sys/block/%s/queue/rotational"%dev.path.replace("/dev/","").strip()
                                 ssd0=int(j.system.fs.fileGetContents(pathssdcheck))==0
                                 disko.ssd=ssd0   
-                                                                                          
                                 if ssd==None or ssd0==ssd:
-                                    print "process disk"
                                     # print disko
-                                    
                                     hrdpath="%s/disk.hrd"%mountpoint
 
                                     if j.system.fs.exists(hrdpath):
@@ -214,8 +207,6 @@ class Diskmanager():
                                         if partnr==0 or forceinitialize:
                                             j.system.fs.remove(hrdpath)
 
-                                    if not j.system.fs.exists(hrdpath) and initialize==False:
-                                        raise RuntimeError("Disks not initialized, there needs to be a disk.hrd in root of partition")
                                     if not j.system.fs.exists(hrdpath) and initialize:
                                         C="""
 diskinfo.partnr=
@@ -252,9 +243,7 @@ diskinfo.description=
                                         guid,new,changed=client_disk.set(disk)
                                         disk=client_disk.get(guid)
                                         diskid=disk.id
-                                        
                                         hrd.set("diskinfo.partnr",diskid)
-                                        
                                     if j.system.fs.exists(hrdpath):
                                         # hrd=j.core.hrd.getHRD(hrdpath)
                                         disko.id=hrd.get("diskinfo.partnr")
@@ -262,13 +251,13 @@ diskinfo.description=
                                         disko.type.sort()
                                         disko.description=hrd.get("diskinfo.description")
                                         print "found disk:\n%s"%(disko)
-                                        result.append(disko)
+                                    result.append(disko)
                                     cmd="umount /mnt/tmp"
                                     j.system.process.execute(cmd,dieOnNonZeroExitCode=False)
                                     if os.path.ismount("/mnt/tmp")==True:
                                         raise RuntimeError("/mnt/tmp should not be mounted")
 
-        return result  
+        return result
 
     def partitionsFind_Ext4Data(self):
         """
