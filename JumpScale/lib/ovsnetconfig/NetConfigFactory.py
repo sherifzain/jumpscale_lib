@@ -167,7 +167,7 @@ iface $iname inet manual
 """
         C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
-        C=C.replace("$MTU", str(self.PHYSMTU))
+        C=C.replace("$MTU", str(self.PHYSMTU)) # strings here
         ed=j.codetools.getTextFileEditor("/etc/network/interfaces")
         ed.setSection(backplanename,C)
 
