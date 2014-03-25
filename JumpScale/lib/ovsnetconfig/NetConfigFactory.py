@@ -217,6 +217,7 @@ iface $bondname inet manual
  ovs_bridge $BPNAME
  ovs_type OVSPort
  ovs_bonds $bondinterfaces
+ ovs_options bond_mode=balance-tcp lacp=active bond_fake_iface=false other_config:lacp-time=fast bond_updelay=2000 bond_downdelay=400
  $disable_ipv6
  up ip link set $bondname mtu $MTU
 """
@@ -295,6 +296,7 @@ iface $bondname inet manual
  ovs_bridge $BPNAME
  ovs_type OVSPort
  ovs_bonds $bondinterfaces
+ ovs_options bond_mode=balance-tcp lacp=active bond_fake_iface=false other_config:lacp-time=fast bond_updelay=2000 bond_downdelay=400
  $disable_ipv6
  up ip link set $bondname mtu $MTU
 """
