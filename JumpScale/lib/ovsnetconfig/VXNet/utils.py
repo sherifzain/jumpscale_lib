@@ -13,7 +13,7 @@ vsctl = "/usr/bin/ovs-vsctl"
 ofctl = "/usr/bin/ovs-ofctl"
 ip = "/sbin/ip"
 ethtool = "/sbin/ethtool"
-
+PHYSMTU = 1550
 
 # TODO : errorhandling
 def send_to_syslog(msg):
@@ -133,6 +133,7 @@ def createVXlan(vxname,vxid,multicast,vxbackend):
     Created with no protocol, and upped (no ipv4, no ipv6)
     Fixed standard : 239.0.x.x, id
     # 0000-fe99 for customer vxlans, ff00-ffff for environments
+    MTU of VXLAN = 1500
     """
     cmd = 'ip link add %s type vxlan id %s group %s ttl 60 dev %s' % (vxname, vxid, multicast, vxbackend)
     r,s,e = doexec(cmd.split())
@@ -203,3 +204,32 @@ def setMTU(interface,mtu):
     r,s,e = doexec(cmd.split())
     if r:
         raise RuntimeError('Could not set %s to MTU %s' %(interface,mtu))
+
+def addBond(bridge, bondname, iflist, lacp="active", lacp_time="fast", mode="balance-tcp", trunks=None):
+    # bond_mode=balance-tcp lacp=active bond_fake_iface=false other_config:lacp-time=fast bond_updelay=2000 bond_downdelay=400
+    """
+    Add a bond to a bridge
+    :param bridge: BridgeName (string)
+    :param bondname: Bondname (string)
+    :param iflist: list or tuple
+    :param lacp: "active" or "passive"
+    :param lacp_time: mode "fast" or "slow"
+    :param mode: balance-tcp, balance-slb, active-passive
+    :param trunks: allowed VLANS (list or tuple)
+    """
+    if type(iflist) is str:
+        intf = re.split('\W+', iflist)
+    if type(trunks) is str:
+        tr = re.split('\W+', trunks)
+    buildup = "add-bond %s %s " % (bridge, bondname) + " ".join(e for e in list(set(intf))) + " lacp=%s " % lacp
+    buildup = buildup + " -- set Port %s bond_mode=%s bond_fake_iface=false " % (bondname, mode)
+    buildup = buildup + "other_config:lacp-time=%s bond_updelay=2000 bond_downdelay=400 " % lacp_time
+    if trunks is not None:
+        trlist = ",".join(str(e) for e in list(set(tr)))
+        buildup = buildup + "trunks=" + trlist
+    # no use to autoconf ipv6, as this won't work anyway
+    for i in iflist:
+        disable_ipv6(i)
+    r,s,e = doexec(buildup.split())
+    if e:
+        raise RuntimeError("Could not create bond %s for bridge %s" % (bondname,bridge))
