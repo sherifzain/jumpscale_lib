@@ -2,6 +2,7 @@ __author__ = 'delandtj'
 
 from utils import *
 
+
 class VXlan(object):
     def __init__(self,oid,backend='Backplane1'):
         def bytes(num):
@@ -16,6 +17,7 @@ class VXlan(object):
         destroyVXlan(self.name)
     def no6(self):
         disable_ipv6(self.name)
+
 
 class Bridge(object):
     def __init__(self, name):
@@ -32,6 +34,25 @@ class Bridge(object):
 class VXBridge(Bridge):
     def __init__(self,oid):
         self.name = 'space_' + oid.tostring()
+
+
+class BondBridge(object):
+    def __init__(self, name, interfaces, bondname=None, trunks=None):
+        self.name = name
+        self.interfaces = interfaces
+        self.trunks = trunks
+        if bondname is not None:
+            self.bondname = "%s-Bond" % self.name
+        else:
+            self.bondname = bondname
+
+    def create(self):
+        createBridge(self.name)
+        addBond(self.name, self.bondname, self.interfaces,trunks=self.trunks)
+
+    def destroy(self):
+        destroyBridge(self.name)
+
 
 class NameSpace(object):
     def __init__(self, name):
@@ -58,6 +79,7 @@ class NetID(object):
         # netidstring = str(hex(self.netid,16))[2:]
         oidstring = '%04x' % self.oid
         return oidstring
+
 
 class VethPair(object):
     def __init__(self,oid):

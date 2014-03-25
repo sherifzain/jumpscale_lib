@@ -1,11 +1,14 @@
 #!/usr/bin/env python
-from JumpScale import j
 import netaddr
+import pprint
+import re
+
+from JumpScale import j
 import VXNet.vxlan as vxlan
-from netaddr import *
 import VXNet.netclasses as netcl
 from VXNet.utils import *
-import pprint
+
+
 class NetConfigFactory():
 
     def __init__(self):
@@ -341,9 +344,9 @@ iface $bondname inet manual
         print self._exec("ip a", failOnError=True)
         print self._exec("ovs-vsctl show", failOnError=True)
 
-
-       
-
-
-    
-
+    def newBondedBackplane(self, name, interfaces, trunks=None):
+        """
+        Reasonable defaults  : mode=balance-tcp, lacp=active,fast, bondname=brname-Bond, all vlans allowed
+        """
+        br = netcl.BondBridge(name,interfaces)
+        br.create()
