@@ -77,7 +77,7 @@ def destroyBridge(name):
         raise RuntimeError("Problem with destruction of bridge %s, err was: %s" % (name,e))
 
 
-def addVlanPatch(parentbridge, vlanbridge, vlanid):
+def VlanPatch(parentbridge, vlanbridge, vlanid):
     parentpatchport = '%s-%s' % (vlanbridge, str(vlanid))
     bridgepatchport = '%s-%s' % (parentbridge, str(vlanid))
     cmd = '%s add-port %s %s tag=%s -- set Interface %s type=patch options:peer=%s' % (vsctl, parentbridge, parentpatchport, vlanid, parentpatchport, bridgepatchport)
@@ -89,7 +89,7 @@ def addVlanPatch(parentbridge, vlanbridge, vlanid):
     if r:
         raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
 
-def vlanPatch(parbr,vlbr,id):
+def addvlanPatch(parbr,vlbr,id):
     parport = "{}-{!s}".format(vlbr,id)
     brport  = "{}-{!s}".format(parbr,id)
     c = "{0} add-br {1} -- add-port {1} {3} -- set Interface {3} type=patch options:peer={2}".format(vsctl,vlbr,parport,brport)
