@@ -89,7 +89,7 @@ def VlanPatch(parentbridge, vlanbridge, vlanid):
     if r:
         raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
 
-def addvlanPatch(parbr,vlbr,id):
+def addVlanPatch(parbr,vlbr,id):
     parport = "{}-{!s}".format(vlbr,id)
     brport  = "{}-{!s}".format(parbr,id)
     c = "{0} add-br {1} -- add-port {1} {3} -- set Interface {3} type=patch options:peer={2}".format(vsctl,vlbr,parport,brport)

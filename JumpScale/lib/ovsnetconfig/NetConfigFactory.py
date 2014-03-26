@@ -93,8 +93,6 @@ class NetConfigFactory():
             br.connect(interface)
 
     def newVlanBridge(self, name, parentbridge, vlanid):
-        br = netcl.Bridge(name)
-        br.create()
         addVlanPatch(parentbridge, name, vlanid)
 
     def ensureVXNet(self, networkid, backend):
