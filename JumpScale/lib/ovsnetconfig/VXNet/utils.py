@@ -83,11 +83,21 @@ def addVlanPatch(parentbridge, vlanbridge, vlanid):
     cmd = '%s add-port %s %s tag=%s -- set Interface %s type=patch options:peer=%s' % (vsctl, parentbridge, parentpatchport, vlanid, parentpatchport, bridgepatchport)
     r,s,e = doexec(cmd.split())
     if r:
-        raise RuntimeError("Add extra vlan pair filed %s" % (e))
+        raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
     cmd = '%s add-port %s %s -- set Interface %s type=patch options:peer=%s' % (vsctl, vlanbridge, bridgepatchport, bridgepatchport, parentpatchport)
     r,s,e = doexec(cmd.split())
     if r:
-        raise RuntimeError("Add extra vlan pair filed %s" % (e))
+        raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
+
+def vlanPatch(parbr,vlbr,id):
+    parport = "{}-{!s}".format(vlbr,id)
+    brport  = "{}-{!s}".format(parbr,id)
+    c = "{0} add-br {1} -- add-port {1} {3} -- set Interface {3} type=patch options:peer={2}".format(vsctl,vlbr,parport,brport)
+    c = c + " -- add-port {0} {2} tag={3!s} -- set Interface {2} type=patch options:peer={1}".format(parbr,brport,parport,id)
+    print c.split()
+    r,s,e = doexec(cmd.split())
+    if r:
+        raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
 
 def createNameSpace(name):
     if name not in get_all_namespaces():
