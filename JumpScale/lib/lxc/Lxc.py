@@ -11,6 +11,13 @@ class Lxc():
     def __init__(self):
         self._prefix="" #no longer use prefixes
 
+        self.basepath="/mnt/btrfs/lxc" #btrfs subvol create 
+        #j.system.fs.joinPaths('/var', 'lib', 'lxc')
+        if not j.system.fs.exists(path=self.basepath):
+            raise RuntimeError("only btrfs lxc supported for now")
+
+
+
     def _getChildren(self,pid,children):
         process=j.system.process.getProcessObject(pid)
         children.append(process)
@@ -19,8 +26,16 @@ class Lxc():
         return children
 
     def _get_rootpath(self,name):
-        rootpath=j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, name), 'delta0')
+        rootpath=j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, name), 'delta0')
         return rootpath
+
+    def _getMachinePath(self,machinename,append=""):
+        if machinename=="":
+            raise RuntimeError("Cannot be empty")
+        base = j.system.fs.joinPaths( self.basepath,'%s%s' % (self._prefix, machinename))
+        if append<>"":
+            base=j.system.fs.joinPaths(base,append)
+        return base
 
     def list(self):
         """
@@ -107,6 +122,67 @@ ipaddr=
             print "TOTAL: mem:%-8s cpu:%-8s" % (mem, cpu)
         return result
 
+    def exportRsync(self,name,backupname):
+        ipaddr=j.application.config.get("jssync.addr")
+        path=self._getMachinePath(name)
+        if not j.system.fs.exists(path):
+            raise RuntimeError("cannot find machine:%s"%path)
+        if backupname[-1]<>"/":
+            backupname+="/"
+        if path[-1]<>"/":
+            path+="/"
+        cmd="rsync -av -v %s %s::upload/images/%s --delete-after --modify-window=60 --compress --stats  --progress"%(path,ipaddr,backupname)
+        # print cmd
+        j.system.process.executeWithoutPipe(cmd)
+
+    def importRsync(self,backupname,name,basename=""):
+        """
+        @param basename is the name of a start of a machine locally, will be used as basis and then the source will be synced over it
+        """        
+        ipaddr=j.application.config.get("jssync.addr")
+        path=self._getMachinePath(name)                
+        j.system.fs.createDir(path)
+
+        if backupname[-1]<>"/":
+            backupname+="/"
+        if path[-1]<>"/":
+            path+="/"
+
+        if basename<>"":
+            basepath=self._getMachinePath(basename)
+            if basepath[-1]<>"/":
+                basepath+="/"
+            if not j.system.fs.exists(basepath):
+                raise RuntimeError("cannot find base machine:%s"%basepath)
+            cmd="rsync -av -v %s %s --delete-after --modify-window=60 --size-only --compress --stats  --progress"%(basepath,path)            
+            print cmd
+            j.system.process.executeWithoutPipe(cmd)
+
+        cmd="rsync -av -v %s::images/%s %s --delete-after --modify-window=60 --compress --stats  --progress"%(ipaddr,backupname,path)
+        print cmd
+        j.system.process.executeWithoutPipe(cmd)        
+
+
+    def exportTgz(self,name,backupname):
+        path=self._getMachinePath(name)
+        bpath= j.system.fs.joinPaths(self.basepath,"backups")
+        if not j.system.fs.exists(path):
+            raise RuntimeError("cannot find machine:%s"%path)
+        j.system.fs.createDir(bpath)
+        bpath= j.system.fs.joinPaths(bpath,"%s.tgz"%backupname)
+        cmd="cd %s;tar Szcvf %s ."%(path,bpath)
+        j.system.process.executeWithoutPipe(cmd)
+
+    def importTgz(self,backupname,name):
+        path=self._getMachinePath(name)        
+        bpath= j.system.fs.joinPaths(self.basepath,"backups","%s.tgz"%backupname)
+        if not j.system.fs.exists(bpath):
+            raise RuntimeError("cannot find import path:%s"%bpath)
+        j.system.fs.createDir(path)
+
+        cmd="cd %s;tar xzvf %s -C ."%(path,bpath)        
+        j.system.process.executeWithoutPipe(cmd)
+
     def create(self,name="",stdout=True,base="base",start=False,nameserver="8.8.8.8",replace=True):
         """
         @param name if "" then will be an incremental nr
@@ -128,7 +204,7 @@ ipaddr=
             name = nr
         lxcname="%s%s"%(self._prefix,name)
 
-        cmd="lxc-clone --snapshot -B overlayfs -o %s -n %s"%(base,lxcname)
+        cmd="lxc-clone --snapshot -B overlayfs -B btrfs -o %s -n %s -p %s -P %s"%(base,lxcname,self.basepath,self.basepath)
         print cmd
         resultcode,out=j.system.process.execute(cmd)
        
@@ -257,13 +333,6 @@ fi
         j.system.netconfig.root=""#set back to normal
 
 
-    def _getMachinePath(self,machinename,append=""):
-        if machinename=="":
-            raise RuntimeError("Cannot be empty")
-        base = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename))
-        if append<>"":
-            base=j.system.fs.joinPaths(base,append)
-        return base
 
 
     def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
