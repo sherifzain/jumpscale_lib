@@ -36,7 +36,7 @@ class Router(object):
         self._prompt_current = None
         self._prompt_session_start = None
 
-        self._LOGIN_YES_PROMPTS = 'yes'
+        self._LOGIN_YES_PROMPTS = hostname + '#'
         self._LOGIN_USERNAME_PROMPTS = 'Username:'
         self._LOGIN_PASSWORD_PROMPTS = 'Password:|password:'
 
@@ -67,8 +67,7 @@ class Router(object):
         self._console_logfile = logfile
         self._console_log = None
 
-    def login(self, cmd, username=None, password=None,
-              final_prompt=None):
+    def login(self, cmd, username=None, password=None,final_prompt=None):
         """
         Tries to Login. Returns the final matched string
         """
@@ -95,6 +94,8 @@ class Router(object):
         i = self._pexpect_session.expect(expect_list)
         matched = expect_list[i]
 
+
+
         if i == expect_list.index(self._LOGIN_YES_PROMPTS):
             matched = self.exec_cmd("yes", expects=expect_list,
                               return_matched=True)
@@ -118,10 +119,10 @@ class Router(object):
                 self._log(msg, level='WARNING')
 
         if i == expect_list.index(self._LOGIN_PASSWORD_PROMPTS):
+
             if password == None:
                 self._exit("Password not provided")
-            matched = self.exec_cmd(password, expects=expect_list,
-                              return_matched=True)
+            matched = self.exec_cmd(password, expects=expect_list,return_matched=True)
             try:
                 i = expect_list.index(matched)
             except ValueError:
@@ -180,6 +181,8 @@ class Router(object):
         if return_matched is True and return_output is True:
             return_output = False
 
+        return_output=True
+
         prompt = kwargs.get('prompt')
         self._log('Giving cmd: {0}'.format(cmd))
         self._pexpect_session.sendline(cmd)
@@ -190,8 +193,7 @@ class Router(object):
             expects = [expects]
 
         # Order of this list should be considered while modifying the code
-        expects = (expects + [MORE_OUTPUT_PROMPT] + [self._prompt_current] +
-                   [pexpect.EOF])
+        expects = (expects + [MORE_OUTPUT_PROMPT] + [self._prompt_current] +[pexpect.EOF])
         i = self._pexpect_session.expect(expects)
         output = self._pexpect_session.before
         output = output.replace(cmd, '').strip()
@@ -251,7 +253,8 @@ class Router(object):
 
     def _log(self, msg, **kwargs):
         if self.logger is None:
-            print msg
+            # print msg
+            pass
         else:
             self.logger.log(msg, **kwargs)
 

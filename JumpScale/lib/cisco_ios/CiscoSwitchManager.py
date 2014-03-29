@@ -13,34 +13,41 @@ class CiscoSwitch(object):
 
     def __init__(self, host, login,password):
 
-        hostname = 'R1'
-        R1 = Router(hostname, logfile='')
+        R1 = Router(hostname=host, logfile='cisco.log')
         login_cmd = 'telnet ' + host
-        login_expect = '{0}#|{0}>'.format(hostname)  #@TODO NEEDS TO BE ADJUSTED
-        out = R1.login(login_cmd, username, password, login_expect)
-        if out != R1._LOGIN_USERNAME_PROMPTS:
-            R1.logout()
-            time.sleep(60)
-            R1 = Router(hostname, logfile='C:\\Barik\\MyPythonWinProject\\SyslogAutomation\\TEST\\Log1.log')
-            password = Localhost1.get_rsa_token()
-            out = R1.login(login_cmd, login, password, login_expect)
+        login_expect = '#'#.format(hostname)  #@TODO NEEDS TO BE ADJUSTED
+        out = R1.login(login_cmd, login, password, login_expect)
+        # if out != R1._LOGIN_USERNAME_PROMPTS:
+        #     R1.logout()
+        #     time.sleep(60)
+        #     R1 = Router(hostname, logfile='cisco.log')
+        #     password = Localhost1.get_rsa_token()
+        #     out = R1.login(login_cmd, login, password, login_expect)
         
-        self._client=R1
+        self.cisco=R1
 
         self.host=host
         self.login=login
         self.password=password
-        if res<>True: #adjust to check @TODO
-            raise RuntimeError("Could not login into cisco switch: %s"%host)
+        # if res<>True: #adjust to check @TODO
+        #     raise RuntimeError("Could not login into cisco switch: %s"%host)
 
-        inputsentence = []
+        # inputsentence = []
+
+        cmd="terminal length 0"
+        self.do(cmd)
+        self.do("configure terminal","#")
+        self.do("hostname %s"%host,"#")
+        self.do("exit")
 
     def logout(self):
         self._client.logout()
         
-    def do(self,cmd):
-        return self._client.exec_cmd(cmd)
+    def do(self,cmd,prompt=None):
+        if prompt=="":
+            prompt="%s#"%self.cisco.hostname
 
+        return self.cisco.exec_cmd(cmd,prompt=prompt)
 
     def interface_getvlanconfig(self,interfaceName):
         """
@@ -52,12 +59,40 @@ class CiscoSwitch(object):
         configure set of vlan's on interface
         @param reset when True older info is deleted and only this vlanrange is added
         """
+
+    def _normalizespaces(self,line):
+        while line.find("  ")<>-1:
+            line=line.replace("  "," ")
+        return line
+
+
     def interface_getArpMAC(self):
         """
         returns mac addresses an interface knows about (can be used to detect connected ports from servers)
         return dict as follows
         {$interfacename:[$macaddr1,$macaddr2,...]}
         """
+        result={}
+        out=self.do("sh mac-address-table")
+        for line in out.split("\n"):
+            line=line.strip()
+            if line=="" or line[0]<>"*":
+                continue
+            line=self._normalizespaces(line)
+            splitted=line.split(" ")
+            if len(splitted)>5:
+                vlan=splitted[1]
+                mac=splitted[2].replace(".","").lower()
+                ttype=splitted[3]
+                interface=splitted[5]
+                if not result.has_key(interface):
+                    result[interface]=[]
+                result[interface].append(mac)
+            else:
+                pass
+
+        return result
+            
 
 
     def interface_getall(self):
@@ -72,6 +107,7 @@ class CiscoSwitch(object):
         return r
 
     def backup(self,name,destinationdir):
+        config=self.do("show running-config")
         raise RuntimeError("implement")
         return r        
         self.do("/system/backup/save", args={"name":name})
