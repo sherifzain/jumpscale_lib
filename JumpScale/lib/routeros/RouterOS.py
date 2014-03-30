@@ -157,7 +157,7 @@ class RouterOS(object):
         self.ftp=None
         if res<>True:
             raise RuntimeError("Could not login into RouterOS: %s"%host)
-        self.configpath="/opt/jumpscale/apps/routeros/configs/default/"
+        self.configpath="%s/apps/routeros/configs/default/"%j.dirs.baseDir
 
         inputsentence = []
 
