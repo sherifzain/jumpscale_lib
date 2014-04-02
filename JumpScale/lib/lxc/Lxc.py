@@ -10,11 +10,16 @@ class Lxc():
 
     def __init__(self):
         self._prefix="" #no longer use prefixes
+        self.inited=False
 
+    def _init(self):
+        if self.inited:
+            return
         self.basepath="/mnt/btrfs/lxc" #btrfs subvol create 
         #j.system.fs.joinPaths('/var', 'lib', 'lxc')
         if not j.system.fs.exists(path=self.basepath):
             raise RuntimeError("only btrfs lxc supported for now")
+        self.inited=True
 
 
 
@@ -42,6 +47,7 @@ class Lxc():
         names of running & stopped machines
         @return (running,stopped)
         """
+        self._init()
         cmd="lxc-ls --fancy"
         resultcode,out=j.system.process.execute(cmd)
 
@@ -65,6 +71,7 @@ class Lxc():
         return (running,stopped)
 
     def getIp(self,name,fail=True):
+        self._init()
         hrd=self.getConfig(name)
         return hrd.get("ipaddr")
 
@@ -78,6 +85,7 @@ ipaddr=
         return j.core.hrd.getHRD( path=configpath)
 
     def getPid(self,name,fail=True):
+        self._init()
         resultcode,out=j.system.process.execute("lxc-info -n %s%s -p"%(self._prefix,name))
         pid=0
         for line in out.splitlines():
@@ -96,6 +104,7 @@ ipaddr=
         @return [["$name",$pid,$mem,$parent],....,[$mem,$cpu]]
         last one is sum of mem & cpu
         """
+        self._init()
         pid = self.getPid(name)
         children = list()
         children=self._getChildren(pid,children)
@@ -123,6 +132,7 @@ ipaddr=
         return result
 
     def exportRsync(self,name,backupname):
+        self._init()
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)
         if not j.system.fs.exists(path):
@@ -138,7 +148,8 @@ ipaddr=
     def importRsync(self,backupname,name,basename=""):
         """
         @param basename is the name of a start of a machine locally, will be used as basis and then the source will be synced over it
-        """        
+        """    
+        self._init()    
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)                
         j.system.fs.createDir(path)
@@ -164,6 +175,7 @@ ipaddr=
 
 
     def exportTgz(self,name,backupname):
+        self._init()
         path=self._getMachinePath(name)
         bpath= j.system.fs.joinPaths(self.basepath,"backups")
         if not j.system.fs.exists(path):
@@ -174,6 +186,7 @@ ipaddr=
         j.system.process.executeWithoutPipe(cmd)
 
     def importTgz(self,backupname,name):
+        self._init()
         path=self._getMachinePath(name)        
         bpath= j.system.fs.joinPaths(self.basepath,"backups","%s.tgz"%backupname)
         if not j.system.fs.exists(bpath):
@@ -187,6 +200,7 @@ ipaddr=
         """
         @param name if "" then will be an incremental nr
         """
+        self._init()
         print "create:%s"%name
         if replace:
             if j.system.fs.exists(self._getMachinePath(name)):
@@ -244,12 +258,14 @@ ipaddr=
         return self.getIp(name)
         
     def destroyAll(self):
+        self._init()
         running,stopped=self.list()
         alll=running+stopped
         for item in alll:
             self.destroy(item)
 
     def destroy(self,name):
+        self._init()
         running,stopped=self.list()
         alll=running+stopped
         if name in alll:
@@ -261,6 +277,7 @@ ipaddr=
             alll=running+stopped
         
     def stop(self,name):
+        self._init()
         cmd="lxc-stop -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
@@ -295,6 +312,7 @@ ipaddr=
         raise RuntimeError("Could not connect to machine %s over port 22 (ssh)"%ipaddr)
 
     def networkSet(self, machinename,netname="pub0",pubips=[],bridge="Public",gateway=None):
+        self._init()
         print "set pub network %s on %s" %(pubips,machinename)
         machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'config')
         machine_ovs_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'ovsbr_%s'%bridge)
