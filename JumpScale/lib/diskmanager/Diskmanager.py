@@ -156,6 +156,7 @@ class Diskmanager():
                         disko.model = dev.model
                         disko.path=partition.path if disk.type != 'loop' else disk.device.path
                         disko.size=round(partition.getSize(unit="mb"),2)
+                        disko.free = 0
                         print "partition:%s %s"%(disko.path,disko.size)
                         try:
                             fs = parted.probeFileSystem(partition.geometry)
