@@ -24,13 +24,19 @@ jsnet init -i p5p1 -a 172.16.4.2/24 -g 172.16.4.1 -b gw_mgmt
 jsnet init -i p5p1 -a 172.16.1.2/24 -g 172.16.1.1 -b mgmt
 jsnet init -i p5p1 -a 172.16.22.2/24 -g 172.16.22.1 -b storage
 
-#NEXT IS FOR SURE REQUIRED
+#NEXT IS FOR SURE REQUIRED, is internal network for mgmt of LXC containers, use this network for automation
 jsnet init -i p5p1 -a 10.10.253.1/24 -g 10.10.253.254 -b lxc
+
+#IMPORT BASE
+jsmachine importR -n base -m base
 
 #EXAMPLES
 jsmachine new -n test3 -b base -a 192.168.248.103/24 -g 192.168.248.1 --start
 jsmachine stop -n test3
 jsmachine destroy -n test3
+
+#will backup test3 to name test3 on server
+jsmachine exportR -n test3 -m test3
 
 """
 
