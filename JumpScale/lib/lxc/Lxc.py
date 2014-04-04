@@ -28,6 +28,12 @@ jsnet init -i p5p1 -a 172.16.22.2/24 -g 172.16.22.1 -b storage
 jsnet init -i p5p1 -a 10.10.253.1/24 -g 10.10.253.254 -b lxc
 
 #IMPORT BASE
+#you can define a other basepath if its something else then /mnt/btrfs/lxc/ by defining 
+#lxc.basepath=/mnt/vmstor/lxc
+#Import is a rsync commando towards a sync server this server should be configured as:
+#jssync.addr=95.85.60.252
+
+
 jsmachine importR -n base -m base
 
 #EXAMPLES
@@ -52,8 +58,10 @@ class Lxc():
     def _init(self):
         if self.inited:
             return
-        self.basepath="/mnt/btrfs/lxc" #btrfs subvol create 
-        #j.system.fs.joinPaths('/var', 'lib', 'lxc')
+        if j.application.config.exists('lxc.basepath'):
+            self.basepath = j.application.config.get('lxc.basepath')
+        else:
+            self.basepath="/mnt/btrfs/lxc" #btrfs subvol create 
         if not j.system.fs.exists(path=self.basepath):
             raise RuntimeError("only btrfs lxc supported for now")
         self.inited=True
