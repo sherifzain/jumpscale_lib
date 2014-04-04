@@ -197,7 +197,7 @@ ipaddr=
         return out
 
     def btrfsSubvolList(self):
-        out=self._btrfsExecute("subvolume list %s -o"%self.basepath)
+        out=self._btrfsExecute("subvolume list %s"%self.basepath)
         res=[]
         for line in out.split("\n"):
             if line.strip()=="":
