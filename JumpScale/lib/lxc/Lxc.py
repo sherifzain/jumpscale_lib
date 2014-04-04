@@ -6,11 +6,42 @@ import os
 import JumpScale.baselib.netconfig
 import netaddr
 
+INSTALL="""
+jpackage install -n lxc,openvswitch,n2n,ubuntu_kernel
+
+#on 1 disk
+mkfs.btrfs /dev/sdb -f
+
+#on 2 disk
+mkfs.btrfs -d /dev/sdb /dev/sdc -f
+
+mkdir /mnt/btrfs
+mount /dev/sdb /mnt/btrfs
+btrfs subvolume create /mnt/btrfs/lxc
+
+jsnet init -i p5p1 -a 192.168.248.100/24 -g 192.168.248.1 -b public
+jsnet init -i p5p1 -a 172.16.4.2/24 -g 172.16.4.1 -b gw_mgmt
+jsnet init -i p5p1 -a 172.16.1.2/24 -g 172.16.1.1 -b mgmt
+jsnet init -i p5p1 -a 172.16.22.2/24 -g 172.16.22.1 -b storage
+
+#NEXT IS FOR SURE REQUIRED
+jsnet init -i p5p1 -a 10.10.253.1/24 -g 10.10.253.254 -b lxc
+
+#EXAMPLES
+jsmachine new -n test3 -b base -a 192.168.248.103/24 -g 192.168.248.1 --start
+jsmachine stop -n test3
+jsmachine destroy -n test3
+
+"""
+
 class Lxc():
 
     def __init__(self):
         self._prefix="" #no longer use prefixes
         self.inited=False
+
+    def installhelp(self):
+        print INSTALL
 
     def _init(self):
         if self.inited:
@@ -21,8 +52,6 @@ class Lxc():
             raise RuntimeError("only btrfs lxc supported for now")
         self.inited=True
 
-
-
     def _getChildren(self,pid,children):
         process=j.system.process.getProcessObject(pid)
         children.append(process)
@@ -31,7 +60,7 @@ class Lxc():
         return children
 
     def _get_rootpath(self,name):
-        rootpath=j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, name), 'delta0')
+        rootpath=j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, name), 'rootfs')
         return rootpath
 
     def _getMachinePath(self,machinename,append=""):
@@ -48,7 +77,7 @@ class Lxc():
         @return (running,stopped)
         """
         self._init()
-        cmd="lxc-ls --fancy"
+        cmd="lxc-ls --fancy  -P %s"%self.basepath
         resultcode,out=j.system.process.execute(cmd)
 
         stopped = []
@@ -76,7 +105,7 @@ class Lxc():
         return hrd.get("ipaddr")
 
     def getConfig(self,name):
-        configpath=j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, name),"jumpscaleconfig.hrd")
+        configpath=j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, name),"jumpscaleconfig.hrd")
         if not j.system.fs.exists(path=configpath):
             content="""
 ipaddr=
@@ -145,14 +174,66 @@ ipaddr=
         # print cmd
         j.system.process.executeWithoutPipe(cmd)
 
+    def _btrfsExecute(self,cmd):
+        cmd="btrfs %s"%cmd
+        print cmd
+        rc,out=j.system.process.execute(cmd)
+        if rc>0:
+            raise RuntimeError("cannot execute %s"%cmd)
+        return out
+
+    def btrfsSubvolList(self):
+        out=self._btrfsExecute("subvolume list %s -o"%self.basepath)
+        res=[]
+        for line in out.split("\n"):
+            if line.strip()=="":
+                continue
+            if line.find("path ")<>-1:
+                path=line.split("path ")[-1]
+                path=path.strip("/")
+                path=path.replace("lxc/","")
+                res.append(path)
+        return res
+
+    def btrfsSubvolNew(self,name):
+        if not self.btrfsSubvolExists(name):
+            cmd="subvolume create %s/%s"%(self.basepath,name)
+            self._btrfsExecute(cmd)
+
+    def btrfsSubvolCopy(self,nameFrom,NameDest):
+        if not self.btrfsSubvolExists(nameFrom):
+            raise RuntimeError("could not find vol for %s"%nameFrom)
+        if j.system.fs.exists(path="%s/%s"%(self.basepath,NameDest)):
+            raise RuntimeError("path %s exists, cannot copy to existing destination, destroy first."%nameFrom)            
+        cmd="subvolume snapshot %s/%s %s/%s"%(self.basepath,nameFrom,self.basepath,NameDest)
+        self._btrfsExecute(cmd)    
+
+    def btrfsSubvolExists(self,name):
+        subvols=self.btrfsSubvolList()
+        # print subvols
+        return name in subvols
+
+    def btrfsSubvolDelete(self,name):
+        if self.btrfsSubvolExists(name):
+            cmd="subvolume delete %s/%s"%(self.basepath,name)
+            self._btrfsExecute(cmd)
+        path="%s/%s"%(self.basepath,name)
+        if j.system.fs.exists(path=path):
+            j.system.fs.removeDirTree(path)
+        if self.btrfsSubvolExists(name):
+            raise RuntimeError("vol cannot exist:%s"%name)
+
     def importRsync(self,backupname,name,basename=""):
         """
         @param basename is the name of a start of a machine locally, will be used as basis and then the source will be synced over it
         """    
-        self._init()    
+        self._init()
         ipaddr=j.application.config.get("jssync.addr")
-        path=self._getMachinePath(name)                
-        j.system.fs.createDir(path)
+        path=self._getMachinePath(name)    
+
+        self.btrfsSubvolNew(name)
+
+        # j.system.fs.createDir(path)
 
         if backupname[-1]<>"/":
             backupname+="/"
@@ -172,7 +253,6 @@ ipaddr=
         cmd="rsync -av -v %s::images/%s %s --delete-after --modify-window=60 --compress --stats  --progress"%(ipaddr,backupname,path)
         print cmd
         j.system.process.executeWithoutPipe(cmd)        
-
 
     def exportTgz(self,name,backupname):
         self._init()
@@ -204,7 +284,8 @@ ipaddr=
         print "create:%s"%name
         if replace:
             if j.system.fs.exists(self._getMachinePath(name)):
-                self.destroy(name)        
+                self.destroy(name)
+   
 
         running,stopped=self.list()
         machines=running+stopped
@@ -218,16 +299,26 @@ ipaddr=
             name = nr
         lxcname="%s%s"%(self._prefix,name)
 
-        cmd="lxc-clone --snapshot -B overlayfs -B btrfs -o %s -n %s -p %s -P %s"%(base,lxcname,self.basepath,self.basepath)
-        print cmd
-        resultcode,out=j.system.process.execute(cmd)
+        # cmd="lxc-clone --snapshot -B overlayfs -B btrfs -o %s -n %s -p %s -P %s"%(base,lxcname,self.basepath,self.basepath)
+        # print cmd
+        # resultcode,out=j.system.process.execute(cmd)
+
+        self.btrfsSubvolCopy(base,lxcname)
        
         # if lxcname=="base":
         self._setConfig(lxcname,base)
 
+
+        #is in path need to remove
+        resolvconfpath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","resolv.conf")
+        if j.system.fs.isLink(resolvconfpath):
+            j.system.fs.unlink(resolvconfpath)
+
         j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
+
         j.system.netconfig.reset()
         j.system.netconfig.setNameserver(nameserver)
+
         j.system.netconfig.root=""#set back to normal
 
         hrd=self.getConfig(name)
@@ -246,8 +337,8 @@ ipaddr=
             ipaddrs[name]=ipaddr
             j.application.config.setDict("lxc.mgmt.ipaddresses",ipaddrs)
 
-        ## mgmtiprange=j.application.config.get("lxc.management.iprange")
-        # self.networkSet( name,netname="mgmt0", bridge="mgmt", ipaddresses=["%s/24"%ipaddr]) #@todo make sure other ranges also supported
+        # mgmtiprange=j.application.config.get("lxc.management.iprange")
+        self.networkSet( name,netname="mgmt0", bridge="lxc", pubips=["%s/24"%ipaddr]) #@todo make sure other ranges also supported
 
         #set ipaddr in hrd file
         hrd.set("ipaddr",ipaddr)
@@ -268,22 +359,33 @@ ipaddr=
         self._init()
         running,stopped=self.list()
         alll=running+stopped
-        if name in alll:
-            cmd="lxc-destroy -n %s%s -f"%(self._prefix,name)
+        print "running:%s"%",".join(running)
+        print "stopped:%s"%",".join(stopped)
+        if name in running:            
+            # cmd="lxc-destroy -n %s%s -f"%(self._prefix,name)
+            cmd="lxc-kill -P %s -n %s%s"%(self.basepath,self._prefix,name)
             resultcode,out=j.system.process.execute(cmd)
-        #@todo put timeout in
-        while name in alll:
+        while name in running:
             running,stopped=self.list()
+            time.sleep(0.1)
+            print "wait stop"
             alll=running+stopped
-        
+
+        self.btrfsSubvolDelete(name)
+        # #@todo put timeout in
+             
     def stop(self,name):
         self._init()
-        cmd="lxc-stop -n %s%s"%(self._prefix,name)
+        # cmd="lxc-stop -n %s%s"%(self._prefix,name)
+        cmd="lxc-stop -P %s -n %s%s"%(self.basepath,self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
 
     def start(self,name,stdout=True,test=True):
+        self._init()
         print "start:%s"%name
-        cmd="lxc-start -d -n %s%s"%(self._prefix,name)
+        cmd="lxc-start -d -P %s -n %s%s"%(self.basepath,self._prefix,name)
+        print cmd
+        # cmd="lxc-start -d -n %s%s"%(self._prefix,name)
         resultcode,out=j.system.process.execute(cmd)
         start=time.time()
         now=start
@@ -311,11 +413,12 @@ ipaddr=
             time.sleep(0.1)
         raise RuntimeError("Could not connect to machine %s over port 22 (ssh)"%ipaddr)
 
-    def networkSet(self, machinename,netname="pub0",pubips=[],bridge="Public",gateway=None):
+    def networkSet(self, machinename,netname="pub0",pubips=[],bridge="public",gateway=None):
+        bridge=bridge.lower()
         self._init()
         print "set pub network %s on %s" %(pubips,machinename)
-        machine_cfg_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'config')
-        machine_ovs_file = j.system.fs.joinPaths('/var', 'lib', 'lxc', '%s%s' % (self._prefix, machinename), 'ovsbr_%s'%bridge)
+        machine_cfg_file = j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, machinename), 'config')
+        machine_ovs_file = j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, machinename), 'ovsbr_%s'%bridge)
         
         # mgmt = j.application.config.get('lxc.mgmt.ip')
         # netaddr.IPNetwork(mgmt)
@@ -323,11 +426,12 @@ ipaddr=
         config = '''
 lxc.network.type = veth
 lxc.network.flags = up
-lxc.network.veth.pair = %s_%s
+#lxc.network.veth.pair = %s_%s
 lxc.network.name = %s
-lxc.network.script.up = /var/lib/lxc/%s/ovsbr_%s
-lxc.network.script.down = /var/lib/lxc/%s/ovsbr_%s
+lxc.network.script.up = $basedir/%s/ovsbr_%s
+lxc.network.script.down = $basedir/%s/ovsbr_%s
 '''  % (machinename,netname,netname,machinename,bridge,machinename,bridge)
+        config=config.replace("$basedir",self.basepath)
 
         Covs="""
 #!/bin/bash
@@ -388,17 +492,18 @@ lxc.cap.drop = mac_admin
 lxc.cap.drop = mac_override
 lxc.cap.drop = sys_time
 lxc.hook.clone = /usr/share/lxc/hooks/ubuntu-cloud-prep
-lxc.rootfs = overlayfs:$baseparent/rootfs:$base/delta0
+#lxc.rootfs = overlayfs:$baseparent/rootfs:$base/delta0
+lxc.rootfs = $base/rootfs
 lxc.pivotdir = lxc_putold
 
-lxc.mount.entry=/var/lib/lxc/jumpscale $base/rootfs/jumpscale none defaults,bind 0 0
-lxc.mount.entry=/var/lib/lxc/shared $base/rootfs/shared none defaults,bind 0 0
+#lxc.mount.entry=/var/lib/lxc/jumpscale $base/rootfs/jumpscale none defaults,bind 0 0
+#lxc.mount.entry=/var/lib/lxc/shared $base/rootfs/shared none defaults,bind 0 0
 lxc.mount = $base/fstab
 """        
         C=C.replace("$name",name)    
         C=C.replace("$baseparent",baseparent)
         C=C.replace("$base",base)
         j.system.fs.writeFile(machine_cfg_file,C)
-        j.system.fs.createDir("%s/delta0/jumpscale"%base)
-        j.system.fs.createDir("%s/delta0/shared"%base)
+        # j.system.fs.createDir("%s/delta0/jumpscale"%base)
+        # j.system.fs.createDir("%s/delta0/shared"%base)
         
