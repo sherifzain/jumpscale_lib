@@ -148,7 +148,7 @@ class RouterOS(object):
         # j.remote.cuisine.fabric.env['password'] = password
         # self.remoteApi.connect(host)
         self._s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._s.connect((host, 8728))  
+        self._s.connect((host, 8728 ))  
         self.api = ApiRos(self._s)
         res=self.api.login(login,password)
         self.host=host
@@ -223,8 +223,8 @@ class RouterOS(object):
     #     from IPython import embed
     #     print "DEBUG NOW ooo"
     #     embed()
-        
-        
+      
+
     def do(self,cmd,args={}):
         cmds=[]
         cmds.append(cmd)
@@ -234,7 +234,12 @@ class RouterOS(object):
         if args<>{}:
             cmds.append("")
         r=self.api.talk(cmds)
+        return self._parse_result(r)
+ 
+
+    def _parse_result(self, talk_result):
         result3=[]
+        r = talk_result
         for rc,result in r:
             if rc=="!done":
                 return result3
@@ -243,18 +248,10 @@ class RouterOS(object):
                 result2={}
                 for key,value in result.iteritems():
                     key=key.lstrip("=")
-                    if key[0]==".":
-                        # value=int(value.replace("*",""))-1
-                        continue
                     if value=="false":
                         value=False
                     elif value=="true":
                         value=True
-                    else:
-                        try:
-                            value=int(value)
-                        except Exception,e:
-                            pass
                     result2[key]=value
                 if rc=="!trap":
                     msg=result2["message"]
@@ -272,9 +269,18 @@ class RouterOS(object):
                         cats[7]="value generated with :return command"
                         if cats.has_key(cat):
                             msg+"\ncat:%s"%cats[cat]
-                    raise RuntimeError("could not execute:%s,error:\n%s"%(cmd,msg))
-                    
-                result3.append(result2)
+                    raise RuntimeError("could not execute,error:\n%s"%(msg))
+            result3.append(result2)
+        return result3
+
+    def _do_filtered(self, cmd, filters):
+        cmds = []
+        cmds.append(cmd)
+        for f in filters:
+            cmds.append(f)
+        result = self.api.talk(cmds)
+        return self._parse_result(result)
+        
 
     def ipaddr_getall(self):
         r=self.do("/ip/address/getall")
@@ -440,4 +446,46 @@ class RouterOS(object):
             else:
                 dest2=j.system.fs.getBaseName(item)
             self.upload(item,dest2)
+
+    def addPortForwardRule(self, dstaddress,dstport, toaddress, toport, tags=None):
+        arg = {}
+        arg['chain'] = 'dstnat'
+        arg['dst-address'] = dstaddress
+        arg['protocol'] = 'tcp'
+        arg['dst-port'] = dstport
+        arg['action'] = 'dst-nat'
+        arg['to-addresses'] = toaddress
+        arg['to-ports']  = toport
+        if tags is not None:
+            arg['comment'] = tags
+        self.do("/ip/firewall/nat/add", args=arg)
+
+
+    def deletePortForwardRule(self, dstaddress, dstport):
+        """
+        Delete portforward
+        """
+        results = self._do_filtered('/ip/firewall/nat/print',filters = ['=.proplist=.id','?dst-address=%s' % dstaddress, '?dst-port=%s' % dstport])
+        for i in results:
+            self.do('/ip/firewall/nat/remove', args=i)
+        return True
+
+    def deletePortForwardRules(self, tags=None):
+        """
+        Delete port forward rules which has a specific tag.
+        This is used for deleting all the rules created by a specific role
+        """
+        results = self._do_filtered('/ip/firewall/nat/print',filters = ['=.proplist=.id','?comment=%s' % comment])
+        for i in results:
+            self.do('/ip/firewall/nat/remove', args=i)
+        return True
+
+    def listPortForwardRules(self, tags=None):
+        forwards = self.do('/ip/firewall/nat/getall')
+        if tags is not None:
+            forwards = [fw for fw in forwards if 'comment' in fw.keys() and fw['comment'] == tags]
+        return forwards
+
+
+
 
