@@ -7,7 +7,9 @@ import JumpScale.baselib.netconfig
 import netaddr
 
 INSTALL="""
-jpackage install -n lxc,openvswitch,n2n,ubuntu_kernel
+jpackage install -n lxc,openvswitch,n2n
+
+jpackage install -n ubuntu_kernel  #try not to do this, e.g. by installing ubuntu 14.04
 
 #on 1 disk
 mkfs.btrfs /dev/sdb -f
@@ -25,12 +27,12 @@ otherwise when static ip
 jsnet init -i eth0 -a 192.168.248.100/24 -g 192.168.248.1 -b public
 
 
-jsnet init -i eth0 -a 172.16.4.2/24 -g 172.16.4.1 -b gw_mgmt
-jsnet init -i eth0 -a 172.16.1.2/24 -g 172.16.1.1 -b mgmt
-jsnet init -i eth0 -a 172.16.22.2/24 -g 172.16.22.1 -b storage
+jsnet init -i eth0 -a 172.16.4.2/24 -b gw_mgmt
+jsnet init -i eth0 -a 172.16.1.2/24 -b mgmt
+jsnet init -i eth0 -a 172.16.22.2/24 -b storage
 
 #NEXT IS FOR SURE REQUIRED, is internal network for mgmt of LXC containers, use this network for automation
-jsnet init -i p5p1 -a 10.10.253.1/24 -g 10.10.253.254 -b lxc
+jsnet init -i p5p1 -a 10.10.253.1/24 -b lxc
 
 #IMPORT BASE
 #you can define a other basepath if its something else then /mnt/btrfs/lxc/ by defining 
