@@ -119,6 +119,11 @@ class Diskmanager():
     def _kib_to_sectors(self,device, kib):
         return parted.sizeToSectors(kib, 'KiB', device.sectorSize)
 
+    def mirrorsFind(self):
+        cmd="cat /proc/mdstat"
+        rcode,out=j.system.process.execute(cmd)
+        return out
+
     def partitionsFind(self,mounted=None,ttype=None,ssd=None,prefix="sd",minsize=5,maxsize=5000,devbusy=None,\
             initialize=False,forceinitialize=False):
         """
