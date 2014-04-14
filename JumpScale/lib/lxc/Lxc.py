@@ -60,6 +60,14 @@ class Lxc():
     def installhelp(self):
         print INSTALL
 
+    def execute(self, command):
+        env = os.environ.copy()
+        env.pop('PYTHONPATH', None)
+        (exitcode, stdout, stderr) = j.system.process.run(command, showOutput=False, captureOutput=True, stopOnError=False, env=env)
+        if exitcode != 0:
+            raise RuntimeError("Failed to execute %s: Error: %s, %s" % (command, stdout, stderr))
+        return stdout
+
     def _init(self):
         if self.inited:
             return
@@ -97,7 +105,7 @@ class Lxc():
         """
         self._init()
         cmd="lxc-ls --fancy  -P %s"%self.basepath
-        resultcode,out=j.system.process.execute(cmd)
+        out=self.execute(cmd)
 
         stopped = []
         running = []
@@ -134,7 +142,7 @@ ipaddr=
 
     def getPid(self,name,fail=True):
         self._init()
-        resultcode,out=j.system.process.execute("lxc-info -n %s%s -p"%(self._prefix,name))
+        out=self.execute("lxc-info -n %s%s -p"%(self._prefix,name))
         pid=0
         for line in out.splitlines():
             line=line.strip().lower()
@@ -196,10 +204,7 @@ ipaddr=
     def _btrfsExecute(self,cmd):
         cmd="btrfs %s"%cmd
         print cmd
-        rc,out=j.system.process.execute(cmd)
-        if rc>0:
-            raise RuntimeError("cannot execute %s"%cmd)
-        return out
+        return self.execute(cmd)
 
     def btrfsSubvolList(self):
         out=self._btrfsExecute("subvolume list %s"%self.basepath)
@@ -320,7 +325,7 @@ ipaddr=
 
         # cmd="lxc-clone --snapshot -B overlayfs -B btrfs -o %s -n %s -p %s -P %s"%(base,lxcname,self.basepath,self.basepath)
         # print cmd
-        # resultcode,out=j.system.process.execute(cmd)
+        # out=self.execute(cmd)
 
         self.btrfsSubvolCopy(base,lxcname)
        
@@ -383,7 +388,7 @@ ipaddr=
         if name in running:            
             # cmd="lxc-destroy -n %s%s -f"%(self._prefix,name)
             cmd="lxc-kill -P %s -n %s%s"%(self.basepath,self._prefix,name)
-            resultcode,out=j.system.process.execute(cmd)
+            self.execute(cmd)
         while name in running:
             running,stopped=self.list()
             time.sleep(0.1)
@@ -397,7 +402,7 @@ ipaddr=
         self._init()
         # cmd="lxc-stop -n %s%s"%(self._prefix,name)
         cmd="lxc-stop -P %s -n %s%s"%(self.basepath,self._prefix,name)
-        resultcode,out=j.system.process.execute(cmd)
+        self.execute(cmd)
 
     def start(self,name,stdout=True,test=True):
         self._init()
@@ -405,7 +410,7 @@ ipaddr=
         cmd="lxc-start -d -P %s -n %s%s"%(self.basepath,self._prefix,name)
         print cmd
         # cmd="lxc-start -d -n %s%s"%(self._prefix,name)
-        resultcode,out=j.system.process.execute(cmd)
+        self.execute(cmd)
         start=time.time()
         now=start
         found=False
@@ -463,10 +468,10 @@ fi
 
         j.system.fs.writeFile(filename=machine_ovs_file,contents=Covs)
 
-        j.system.process.execute("chmod 744 %s"%machine_ovs_file)
+        j.system.unix.chmod(machine_ovs_file, 0744)
 
         ed=j.codetools.getTextFileEditor(machine_cfg_file)
-        ed.setSection(netname,config)        
+        ed.setSection(netname,config)
 
         j.system.netconfig.setRoot(self._get_rootpath(machinename)) #makes sure the network config is done on right spot
         for ipaddr in pubips:        
