@@ -189,7 +189,7 @@ ipaddr=
             backupname+="/"
         if path[-1]<>"/":
             path+="/"
-        cmd="rsync -av -v %s %s::upload/images/%s --delete-after --modify-window=60 --compress --stats  --progress"%(path,ipaddr,backupname)
+        cmd="rsync -av -v %s %s::upload/pub/images/%s --delete-after --modify-window=60 --compress --stats  --progress"%(path,ipaddr,backupname)
         # print cmd
         j.system.process.executeWithoutPipe(cmd)
 
@@ -269,7 +269,7 @@ ipaddr=
             print cmd
             j.system.process.executeWithoutPipe(cmd)
 
-        cmd="rsync -av -v %s::images/%s %s --delete-after --modify-window=60 --compress --stats  --progress"%(ipaddr,backupname,path)
+        cmd="rsync -av -v %s::download/pub/images/%s %s --delete-after --modify-window=60 --compress --stats  --progress"%(ipaddr,backupname,path)
         print cmd
         j.system.process.executeWithoutPipe(cmd)        
 
