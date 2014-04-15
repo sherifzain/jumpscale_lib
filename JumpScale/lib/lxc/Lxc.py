@@ -189,7 +189,7 @@ ipaddr=
             print "TOTAL: mem:%-8s cpu:%-8s" % (mem, cpu)
         return result
 
-    def exportRsync(self,name,backupname):
+    def exportRsync(self,name,backupname,key="pub"):
         self._init()
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)
@@ -199,7 +199,7 @@ ipaddr=
             backupname+="/"
         if path[-1]<>"/":
             path+="/"
-        cmd="rsync -av -v %s %s::upload/pub/images/%s --delete-after --modify-window=60 --compress --stats  --progress"%(path,ipaddr,backupname)
+        cmd="rsync -av -v %s %s::upload/%s/images/%s --delete-after --modify-window=60 --compress --stats  --progress --exclude '.Trash*' --exclude '*.pyc'"%(path,ipaddr,key,backupname)
         # print cmd
         j.system.process.executeWithoutPipe(cmd)
 
@@ -249,7 +249,7 @@ ipaddr=
         if self.btrfsSubvolExists(name):
             raise RuntimeError("vol cannot exist:%s"%name)
 
-    def importRsync(self,backupname,name,basename=""):
+    def importRsync(self,backupname,name,basename="",key="pub"):
         """
         @param basename is the name of a start of a machine locally, will be used as basis and then the source will be synced over it
         """    
@@ -276,7 +276,7 @@ ipaddr=
             print cmd
             j.system.process.executeWithoutPipe(cmd)
 
-        cmd="rsync -av -v %s::download/pub/images/%s %s --delete-after --modify-window=60 --compress --stats  --progress"%(ipaddr,backupname,path)
+        cmd="rsync -av -v %s::download/%s/images/%s %s --delete-after --modify-window=60 --compress --stats  --progress"%(ipaddr,key,backupname,path)
         print cmd
         j.system.process.executeWithoutPipe(cmd)        
 
@@ -334,11 +334,13 @@ ipaddr=
         # if lxcname=="base":
         self._setConfig(lxcname,base)
 
-
         #is in path need to remove
         resolvconfpath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","resolv.conf")
         if j.system.fs.isLink(resolvconfpath):
             j.system.fs.unlink(resolvconfpath)
+
+        hostpath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","hostname")
+        j.system.fs.writeFile(filename=hostpath,contents=name)
 
         j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
 
@@ -479,8 +481,6 @@ fi
         for ipaddr in pubips:        
             j.system.netconfig.enableInterfaceStatic(dev=netname,ipaddr=ipaddr,gw=gateway,start=False)#do never start because is for lxc container, we only want to manipulate config
         j.system.netconfig.root=""#set back to normal
-
-
 
 
     def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
