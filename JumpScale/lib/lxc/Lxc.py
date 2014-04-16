@@ -7,7 +7,7 @@ import JumpScale.baselib.netconfig
 import netaddr
 
 INSTALL="""
-jpackage install -n lxc,openvswitch,n2n
+jpackage install -n lxc,openvswitch
 
 jpackage install -n ubuntu_kernel  #try not to do this, e.g. by installing ubuntu 14.04
 
@@ -40,8 +40,7 @@ jsnet init -i p5p1 -a 10.10.253.1/24 -b lxc
 #Import is a rsync commando towards a sync server this server should be configured as:
 #jssync.addr=95.85.60.252
 
-
-jsmachine importR -n base -m base
+jsmachine importR -n base -m base -k test
 
 #EXAMPLES
 jsmachine new -n test3 -b base -a 192.168.248.103/24 -g 192.168.248.1 --start
@@ -49,7 +48,7 @@ jsmachine stop -n test3
 jsmachine destroy -n test3
 
 #will backup test3 to name test3 on server
-jsmachine exportR -n test3 -m test3
+jsmachine exportR -n test3 -m test3 -k test
 
 """
 
@@ -191,6 +190,7 @@ ipaddr=
 
     def exportRsync(self,name,backupname,key="pub"):
         self._init()
+        self.removeRedundantFiles(name)
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)
         if not j.system.fs.exists(path):
@@ -199,7 +199,7 @@ ipaddr=
             backupname+="/"
         if path[-1]<>"/":
             path+="/"
-        cmd="rsync -av -v %s %s::upload/%s/images/%s --delete-after --modify-window=60 --compress --stats  --progress --exclude '.Trash*' --exclude '*.pyc'"%(path,ipaddr,key,backupname)
+        cmd="rsync -av -v %s %s::upload/%s/images/%s --delete-after --modify-window=60 --compress --stats  --progress --exclude '.Trash*'"%(path,ipaddr,key,backupname)
         # print cmd
         j.system.process.executeWithoutPipe(cmd)
 
@@ -249,6 +249,13 @@ ipaddr=
         if self.btrfsSubvolExists(name):
             raise RuntimeError("vol cannot exist:%s"%name)
 
+    def removeRedundantFiles(self,name):
+        basepath=self._getMachinePath(name)
+        j.system.fs.removeIrrelevantFiles(basepath,followSymlinks=False)
+
+        toremove="%s/rootfs/var/cache/apt/archives/"%basepath
+        j.system.fs.removeDirTree(toremove)
+
     def importRsync(self,backupname,name,basename="",key="pub"):
         """
         @param basename is the name of a start of a machine locally, will be used as basis and then the source will be synced over it
@@ -282,6 +289,7 @@ ipaddr=
 
     def exportTgz(self,name,backupname):
         self._init()
+        self.removeRedundantFiles(name)
         path=self._getMachinePath(name)
         bpath= j.system.fs.joinPaths(self.basepath,"backups")
         if not j.system.fs.exists(path):
@@ -373,8 +381,21 @@ ipaddr=
 
         if start:
             return self.start(name)
-
+        self.setHostName(name)
         return self.getIp(name)
+
+    def setHostName(self,name):
+        lines=j.system.fs.fileGetContents("/etc/hosts")
+        out=""
+        for line in lines:
+            line=line.strip()
+            if line.strip()=="" or line[0]=="#":
+                continue
+            if line.find(name)<>-1:
+                continue
+            out+="%s\n"%line
+        out+="%s      %s\n"%(self.getIp(name),name)
+        j.system.fs.writeFile(filename="/etc/hosts",contents=out)
         
     def destroyAll(self):
         self._init()
@@ -432,6 +453,8 @@ ipaddr=
                 print msg
             raise RuntimeError(msg)
     
+        self.setHostName(name)
+
         ipaddr=self.getIp(name)
         print "test ssh access to %s"%ipaddr
         timeout=time.time()+10        
@@ -533,3 +556,4 @@ lxc.mount = $base/fstab
         # j.system.fs.createDir("%s/delta0/jumpscale"%base)
         # j.system.fs.createDir("%s/delta0/shared"%base)
         
+
