@@ -475,7 +475,10 @@ class RouterOS(object):
         Delete port forward rules which has a specific tag.
         This is used for deleting all the rules created by a specific role
         """
-        results = self._do_filtered('/ip/firewall/nat/print',filters = ['=.proplist=.id','?comment=%s' % comment])
+        if tags:
+            results = self._do_filtered('/ip/firewall/nat/print',filters = ['=.proplist=.id','?comment=%s' % tags])
+        else:
+            results = self._do_filtered('/ip/firewall/nat/print',filters = ['=.proplist=.id'])
         for i in results:
             self.do('/ip/firewall/nat/remove', args=i)
         return True
