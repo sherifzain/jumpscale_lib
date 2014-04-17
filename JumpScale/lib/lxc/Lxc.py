@@ -345,10 +345,24 @@ ipaddr=
         #is in path need to remove
         resolvconfpath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","resolv.conf")
         if j.system.fs.isLink(resolvconfpath):
-            j.system.fs.unlink(resolvconfpath)
+            j.system.fs.unlink(resolvconfpath)            
 
         hostpath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","hostname")
         j.system.fs.writeFile(filename=hostpath,contents=name)
+
+        #add host in own hosts file
+        hostspath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","hosts")
+        lines=j.system.fs.fileGetContents(hostspath)
+        out=""
+        for line in lines:
+            line=line.strip()
+            if line.strip()=="" or line[0]=="#":
+                continue
+            if line.find(name)<>-1:
+                continue
+            out+="%s\n"%line
+        out+="%s      %s\n"%("127.0.0.1",name)
+        j.system.fs.writeFile(filename=hostspath,contents=out)
 
         j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
 
@@ -387,10 +401,7 @@ ipaddr=
     def setHostName(self,name):
         lines=j.system.fs.fileGetContents("/etc/hosts")
         out=""
-        for line in lines:
-            line=line.strip()
-            if line.strip()=="" or line[0]=="#":
-                continue
+        for line in lines.split("\n"):
             if line.find(name)<>-1:
                 continue
             out+="%s\n"%line
