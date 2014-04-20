@@ -1,11 +1,59 @@
 from JumpScale import j
 import os
+import errno
+import stat
+
+
+def _is_block(file):
+    try:
+        st = os.stat(file)
+    except OSError, err:
+        if err.errno == errno.ENOENT:
+            return False
+        raise
+    return stat.S_ISBLK(st.st_mode)
+
+def get_open_blks(pid):
+    retlist = set()
+    files = os.listdir("/proc/%s/fd" % pid)
+    hit_enoent = False
+    for fd in files:
+        file = "/proc/%s/fd/%s" % (pid, fd)
+        if os.path.islink(file):
+            try:
+                file = os.readlink(file)
+            except OSError, err:
+                if err.errno == errno.ENOENT:
+                    hit_enoent = True
+                    continue
+                raise
+            else:
+                if file.startswith('/') and _is_block(file):
+                    retlist.add(int(fd))
+    if hit_enoent:
+        # raise NSP if the process disappeared on us
+        os.stat('/proc/%s' % pid)
+    return retlist
 
 try:
     import parted
 except:
     j.system.platform.ubuntu.install("python-parted")
     import parted
+
+#patch parted
+_orig_getAllDevices = parted.getAllDevices
+def _patchedGetAllDevices():
+    pid = os.getpid()
+    fds = get_open_blks(pid)
+    try:
+        return _orig_getAllDevices()
+    finally:
+        afds = get_open_blks(pid)
+        for fd in afds.difference(fds):
+            os.close(fd)
+
+parted.getAllDevices = _patchedGetAllDevices
 
 class Disk():
     """
@@ -71,6 +119,11 @@ class Diskmanager():
     def _kib_to_sectors(self,device, kib):
         return parted.sizeToSectors(kib, 'KiB', device.sectorSize)
 
+    def mirrorsFind(self):
+        cmd="cat /proc/mdstat"
+        rcode,out=j.system.process.execute(cmd)
+        return out
+
     def partitionsFind(self,mounted=None,ttype=None,ssd=None,prefix="sd",minsize=5,maxsize=5000,devbusy=None,\
             initialize=False,forceinitialize=False):
         """
@@ -78,40 +131,37 @@ class Diskmanager():
         return [[$partpath,$size,$free,$ssd]]
         @param ssd if None then ssd and other
         """
-        result=[]
         import parted
         import JumpScale.grid.osis
         import psutil
-        p=parted.disk.parted
         result=[]
-        psutilparts=psutil.disk_partitions()
-
-        disko=Disk()
+        mounteddevices = psutil.disk_partitions()
 
         def getpsutilpart(partname):
-            for part00 in psutilparts:
-                if part00.device==partname:
-                    return part00
+            for part in mounteddevices:
+                if part.device==partname:
+                    return part
             return None
 
         for dev in parted.getAllDevices():
             path=dev.path
-            geom = dev.hardwareGeometry;
             #ssize = dev.sectorSize;
             # size = (geom[0] * geom[1] * geom[2] * ssize) / 1000 / 1000 / 1000;
             # size2=dev.getSize()
-            disko.model=dev.model
 
-            if devbusy==None or dev.busy==devbusy:                    
-                if path.find("/dev/%s"%prefix)==0:                        
+            if devbusy==None or dev.busy==devbusy:
+                if path.startswith("/dev/%s"%prefix):
                     try:
                         disk = parted.Disk(dev)
-                        primary_partitions = disk.getPrimaryPartitions()
+                        partitions = disk.partitions
                     except parted.DiskLabelException:
-                        primary_partitions = list()
-                    for partition in primary_partitions:
-                        disko.path=partition.path
-                        disko.size=round(partition.getSize(unit="gb"),2)
+                        partitions = list()
+                    for partition in partitions:
+                        disko=Disk()
+                        disko.model = dev.model
+                        disko.path=partition.path if disk.type != 'loop' else disk.device.path
+                        disko.size=round(partition.getSize(unit="mb"),2)
+                        disko.free = 0
                         print "partition:%s %s"%(disko.path,disko.size)
                         try:
                             fs = parted.probeFileSystem(partition.geometry)
@@ -119,10 +169,7 @@ class Diskmanager():
                             fs = "unknown"
 
                         disko.fs=fs
-                        print "fs:%s"%fs
-
-                        partfound=getpsutilpart(partition.path)
-                        
+                        partfound=getpsutilpart(disko.path)
                         mountpoint=None
                         if partfound==None and mounted<>True:
                             mountpoint="/mnt/tmp"
@@ -139,25 +186,22 @@ class Diskmanager():
                             disko.mountpoint=mountpoint
                             disko.mounted=True
 
+                        pathssdcheck="/sys/block/%s/queue/rotational"%dev.path.replace("/dev/","").strip()
+                        ssd0=int(j.system.fs.fileGetContents(pathssdcheck))==0
+                        disko.ssd=ssd0   
+                        result.append(disko)
+
                         if mountpoint<>None:
-                            print "mountpoint:%s"%mountpoint                            
+                            print "mountpoint:%s"%mountpoint
                             size, used, free, percent=psutil.disk_usage(mountpoint)
-                            disko.free=disko.size*float(1-percent/100)    
+                            disko.free=disko.size*float(1-percent/100)
 
-                            size=disko.size
-                            disko.size=int(disko.size*1024)
-                            disko.free=int(disko.free*1024)
+                            size=disko.size / 1024
+                            disko.free=int(disko.free)
 
-                            if (ttype==None or fs==ttype) and size>minsize and size<maxsize:
-                                print "check disk for ssd"
-                                pathssdcheck="/sys/block/%s/queue/rotational"%dev.path.replace("/dev/","").strip()
-                                ssd0=int(j.system.fs.fileGetContents(pathssdcheck))==0
-                                disko.ssd=ssd0   
-                                                                                          
-                                if ssd==None or ssd0==ssd:
-                                    print "process disk"
+                            if (ttype==None or fs==ttype) and size>minsize and (maxsize is None or size<maxsize):
+                                if ssd==None or disko.ssd==ssd:
                                     # print disko
-                                    
                                     hrdpath="%s/disk.hrd"%mountpoint
 
                                     if j.system.fs.exists(hrdpath):
@@ -166,8 +210,6 @@ class Diskmanager():
                                         if partnr==0 or forceinitialize:
                                             j.system.fs.remove(hrdpath)
 
-                                    if not j.system.fs.exists(hrdpath) and initialize==False:
-                                        raise RuntimeError("Disks not initialized, there needs to be a disk.hrd in root of partition")
                                     if not j.system.fs.exists(hrdpath) and initialize:
                                         C="""
 diskinfo.partnr=
@@ -204,9 +246,7 @@ diskinfo.description=
                                         guid,new,changed=client_disk.set(disk)
                                         disk=client_disk.get(guid)
                                         diskid=disk.id
-                                        
                                         hrd.set("diskinfo.partnr",diskid)
-                                        
                                     if j.system.fs.exists(hrdpath):
                                         # hrd=j.core.hrd.getHRD(hrdpath)
                                         disko.id=hrd.get("diskinfo.partnr")
@@ -214,13 +254,12 @@ diskinfo.description=
                                         disko.type.sort()
                                         disko.description=hrd.get("diskinfo.description")
                                         print "found disk:\n%s"%(disko)
-                                        result.append(disko)
                                     cmd="umount /mnt/tmp"
                                     j.system.process.execute(cmd,dieOnNonZeroExitCode=False)
                                     if os.path.ismount("/mnt/tmp")==True:
                                         raise RuntimeError("/mnt/tmp should not be mounted")
 
-        return result  
+        return result
 
     def partitionsFind_Ext4Data(self):
         """
