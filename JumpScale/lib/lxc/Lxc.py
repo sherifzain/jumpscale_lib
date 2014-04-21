@@ -56,7 +56,7 @@ class Lxc():
 
     def __init__(self):
         self._prefix="" #no longer use prefixes
-        self.inited=False
+        self.intialized=False
 
     def installhelp(self):
         print INSTALL
@@ -70,7 +70,7 @@ class Lxc():
         return stdout
 
     def _init(self):
-        if self.inited:
+        if self.intialized:
             return
         if j.application.config.exists('lxc.basepath'):
             self.basepath = j.application.config.get('lxc.basepath')
@@ -78,7 +78,7 @@ class Lxc():
             self.basepath="/mnt/btrfs/lxc" #btrfs subvol create 
         if not j.system.fs.exists(path=self.basepath):
             raise RuntimeError("only btrfs lxc supported for now")
-        self.inited=True
+        self.intialized=True
 
     def _getChildren(self,pid,children):
         process=j.system.process.getProcessObject(pid)

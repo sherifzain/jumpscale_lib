@@ -294,14 +294,14 @@ iface $bondname inet manual
  ovs_type OVSBond
  ovs_bonds $bondinterfaces
  ovs_options bond_mode=balance-tcp lacp=active bond_fake_iface=false other_config:lacp-time=fast bond_updelay=2000 bond_downdelay=400
- $disable_ipv6
+$disable_ipv6
 """
         n = netaddr.IPNetwork(ipaddr)
         interfaces = ''
         disable_ipv6 = ''
         for interface in bondinterfaces:
             interfaces += '%s ' % interface
-            disable_ipv6 += ' pre-up ip l set %s mtu %s \n up sysctl -w net.ipv6.conf.%s.disable_ipv6=1 \n' % (
+            disable_ipv6 += ' pre-up ip l set %s mtu %s \n pre-up sysctl -w net.ipv6.conf.%s.disable_ipv6=1\n' % (
                 interface, self.PHYSMTU, interface)
         C = C.replace("$BPNAME", str(backplanename))
         C = C.replace("$bondname", bondname)
