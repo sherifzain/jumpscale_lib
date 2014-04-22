@@ -6,51 +6,6 @@ import os
 import JumpScale.baselib.netconfig
 import netaddr
 
-INSTALL="""
-jpackage install -n lxc,openvswitch
-
-jpackage install -n ubuntu_kernel  #try not to do this, e.g. by installing ubuntu 14.04
-
-#on 1 disk
-mkfs.btrfs /dev/sdb -f
-
-#on 2 disk
-mkfs.btrfs -d /dev/sdb /dev/sdc -f
-
-mkdir /mnt/btrfs
-mount /dev/sdb /mnt/btrfs
-btrfs subvolume create /mnt/btrfs/lxc
-
-if you work with DHCP
-jsnet init -i eth0 -b public
-otherwise when static ip
-jsnet init -i eth0 -a 192.168.248.100/24 -g 192.168.248.1 -b public
-
-
-jsnet init -i eth0 -a 172.16.4.2/24 -b gw_mgmt
-jsnet init -i eth0 -a 172.16.1.2/24 -b mgmt
-jsnet init -i eth0 -a 172.16.22.2/24 -b storage
-
-#NEXT IS FOR SURE REQUIRED, is internal network for mgmt of LXC containers, use this network for automation
-jsnet init -i p5p1 -a 10.10.253.1/24 -b lxc
-
-#IMPORT BASE
-#you can define a other basepath if its something else then /mnt/btrfs/lxc/ by defining 
-#lxc.basepath=/mnt/vmstor/lxc
-#Import is a rsync commando towards a sync server this server should be configured as:
-#jssync.addr=95.85.60.252
-
-jsmachine importR -n base -m base -k test
-
-#EXAMPLES
-jsmachine new -n test3 -b base -a 192.168.248.103/24 -g 192.168.248.1 --start
-jsmachine stop -n test3
-jsmachine destroy -n test3
-
-#will backup test3 to name test3 on server
-jsmachine exportR -n test3 -m test3 -k test
-
-"""
 
 class Lxc():
 
@@ -58,8 +13,6 @@ class Lxc():
         self._prefix="" #no longer use prefixes
         self.intialized=False
 
-    def installhelp(self):
-        print INSTALL
 
     def execute(self, command):
         env = os.environ.copy()
@@ -396,6 +349,8 @@ ipaddr=
         if start:
             return self.start(name)
         self.setHostName(name)
+        self.pushSSHKey(name)
+
         return self.getIp(name)
 
     def setHostName(self,name):
@@ -408,6 +363,13 @@ ipaddr=
         out+="%s      %s\n"%(self.getIp(name),name)
         j.system.fs.writeFile(filename="/etc/hosts",contents=out)
         
+    def pushSSHKey(self,name):
+        path=j.system.fs.joinPaths(self._get_rootpath(name),"root",".ssh","authorized_keys")
+        content=j.system.fs.fileGetContents("/root/.ssh/id_dsa.pub")
+        j.system.fs.writeFile(filename=path,contents="%s\n"%content)
+        path=j.system.fs.joinPaths(self._get_rootpath(name),"root",".ssh","known_hosts")
+        j.system.fs.writeFile(filename=path,contents="")
+
     def destroyAll(self):
         self._init()
         running,stopped=self.list()
