@@ -53,7 +53,8 @@ class Sandboxer():
             lpath=lpath.strip()
             if lpath=="":
                 continue
-            if name.find("libc.so")<>0 and name.lower().find("libx")<>0 and name not in self._done:
+            if name.find("libc.so")<>0 and name.lower().find("libx")<>0 and name not in self._done \
+                and name.find("libdl.so")<>0:
                 print "found:%s"%name
                 result[name]=Dep(name,lpath)
                 self._done.append(name)
