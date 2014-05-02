@@ -60,8 +60,8 @@ def get_all_bridges():
 
 
 def ip_link_set(device, args):
-    doexec([ip, "link", "set", device, args])
-
+    cmd = "ip l set " + device + " " + args
+    doexec(cmd.split())
 
 def createBridge(name):
     cmd = '%s --may-exist add-br %s' % (vsctl, name)
@@ -89,12 +89,14 @@ def VlanPatch(parentbridge, vlanbridge, vlanid):
     if r:
         raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
 
-def addVlanPatch(parbr,vlbr,id):
+def addVlanPatch(parbr,vlbr,id, mtu=None):
     parport = "{}-{!s}".format(vlbr,id)
     brport  = "{}-{!s}".format(parbr,id)
     c = "{0} add-br {1} -- add-port {1} {3} -- set Interface {3} type=patch options:peer={2}".format(vsctl,vlbr,parport,brport)
     c = c + " -- add-port {0} {2} tag={3!s} -- set Interface {2} type=patch options:peer={1}".format(parbr,brport,parport,id)
     r,s,e = doexec(c.split())
+    if mtu:
+        ip_link_set(vlbr,'mtu {0}'.format(mtu))
     if r:
         raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
 
@@ -135,7 +137,6 @@ def destroyVethPair(left):
         raise RuntimeError("Problem with destruction of Veth pair %s, err was: %s" % (left,e))
 
 
-
 def createVXlan(vxname,vxid,multicast,vxbackend):
     """
     Always brought up too
@@ -146,7 +147,7 @@ def createVXlan(vxname,vxid,multicast,vxbackend):
     """
     cmd = 'ip link add %s type vxlan id %s group %s ttl 60 dev %s' % (vxname, vxid, multicast, vxbackend)
     r,s,e = doexec(cmd.split())
-    ip_link_set(vxname,'mtu 1500 up')
+    ip_link_set(vxname,'mtu 1500 up') 
     if r:
         send_to_syslog("Problem with creation of vxlan %s, err was: %s" % (vxname ,e.readlines()))
 

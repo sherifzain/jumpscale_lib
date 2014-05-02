@@ -92,8 +92,8 @@ class NetConfigFactory():
         if interface is not None:
             br.connect(interface)
 
-    def newVlanBridge(self, name, parentbridge, vlanid):
-        addVlanPatch(parentbridge, name, vlanid)
+    def newVlanBridge(self, name, parentbridge, vlanid, mtu=None):
+        addVlanPatch(parentbridge, name, vlanid, mtu=None)
 
     def ensureVXNet(self, networkid, backend):
         vxnet = vxlan.VXNet(networkid, backend)
