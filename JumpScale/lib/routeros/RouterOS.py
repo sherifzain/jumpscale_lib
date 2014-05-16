@@ -422,13 +422,23 @@ class RouterOS(object):
         cmd="/ip route remove [/ip route find static=yes]"
         self.executeScript(cmd)
 
-    def uploadExecuteScript(self,name,removeAfter=True):
+    def uploadExecuteScript(self,name,removeAfter=True,vars={}):
         print "EXECUTE SCRIPT:%s"%name
         name=name+".rsc"
         src=j.system.fs.joinPaths(self.configpath,name)
+        if vars<>{}:
+            content=j.system.fs.fileGetContents(src)
+            for key,val in vars.iteritems():
+                content=content.replace(key,val)
+            src=j.system.fs.getTempFileName()
+            j.system.fs.writeFile(src,content)
+        
         self.upload(src,name)
         self.do("/import", args={"file-name":name})
         self.delfile(name, raiseError=False)
+        if vars<>{}:
+            j.system.fs.remove(src)
+
 
     def executeScript(self,content):
         if content[0]<>"/":
