@@ -75,7 +75,7 @@ class Lxc():
         if j.application.config.exists('lxc.basepath'):
             self.basepath = j.application.config.get('lxc.basepath')
         else:
-            self.basepath="/mnt/btrfs/lxc" #btrfs subvol create 
+            self.basepath="/mnt/vmstor/lxc" #btrfs subvol create
         if not j.system.fs.exists(path=self.basepath):
             raise RuntimeError("only btrfs lxc supported for now")
         self.inited=True
@@ -506,7 +506,7 @@ fi
 
         j.system.fs.writeFile(filename=machine_ovs_file,contents=Covs)
 
-        j.system.unix.chmod(machine_ovs_file, 0744)
+        j.system.unix.chmod(machine_ovs_file, 0755)
 
         ed=j.codetools.getTextFileEditor(machine_cfg_file)
         ed.setSection(netname,config)
