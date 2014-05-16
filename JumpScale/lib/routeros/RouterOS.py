@@ -426,18 +426,22 @@ class RouterOS(object):
         print "EXECUTE SCRIPT:%s"%name
         name=name+".rsc"
         src=j.system.fs.joinPaths(self.configpath,name)
-        if vars<>{}:
-            content=j.system.fs.fileGetContents(src)
-            for key,val in vars.iteritems():
-                content=content.replace(key,val)
-            src=j.system.fs.getTempFileName()
-            j.system.fs.writeFile(src,content)
+
+        content=j.system.fs.fileGetContents(src)
+        for key,val in vars.iteritems():
+            content=content.replace(key,val)
+        src=j.system.fs.joinPaths(j.dirs.tmpDir,j.system.fs.getTempFileName())
+        j.system.fs.writeFile(src,content)
+
+        print "EXECUTE:"
+        print content
+        print "#################END##################"
         
         self.upload(src,name)
         self.do("/import", args={"file-name":name})
         self.delfile(name, raiseError=False)
-        if vars<>{}:
-            j.system.fs.remove(src)
+
+        j.system.fs.remove(src)
 
 
     def executeScript(self,content):
