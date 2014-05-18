@@ -8,6 +8,7 @@ class RouterOSFactory(object):
 #!/usr/bin/python
 
 import sys, posix, time, md5, binascii, socket, select
+import netaddr
 
 class ApiRos:
     "Routeros api"
@@ -390,8 +391,20 @@ class RouterOS(object):
 
     def _getFtp(self):
         from ftplib import FTP
-        self.ftp=FTP(host=self.host, user=self.login, passwd=self.password)
+        if j.system.net.tcpPortConnectionTest(self.host,21):
+            self.ftp=FTP(host=self.host, user=self.login, passwd=self.password)
+        elif j.system.net.tcpPortConnectionTest(self.host,9021):
+            self.ftp=FTP()
+            self.ftp.connect(host="%s"%self.host,port=9021)
+            self.ftp.login(user=self.login, passwd=self.password)
+        else:
+            raise RuntimeError("Could not find port 21 or 9021 to open ftp connection to %s"%self.host)
         
+    def networkId2NetworkAddr(self,networkid):
+        netrange=j.application.config.get("vfw.netrange.internal")
+        net=netaddr.IPNetwork(netrange)
+        return str(netaddr.IPAddress(net.first+int(networkid)))
+            
     def close(self):
         self.ftp.close()
 
@@ -444,6 +457,20 @@ class RouterOS(object):
         self.delfile(name, raiseError=False)
 
         j.system.fs.remove(src)
+
+    def resetMac(self,interface):
+        iterface=None
+        nr=0
+        for item in self.interface_getall():
+            if item["name"]==interface:
+                interface=item
+                break
+            nr+=1
+        
+        if interface==None:
+            raise RuntimeError("Could not find interface %s"%interface)
+
+        self.do("/interface/ethernet/reset-mac-address",args={"numbers":str(nr)})
 
 
     def executeScript(self,content):
