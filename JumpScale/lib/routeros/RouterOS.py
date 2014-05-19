@@ -159,7 +159,7 @@ class RouterOS(object):
         if res<>True:
             raise RuntimeError("Could not login into RouterOS: %s"%host)
         self.configpath="%s/apps/routeros/configs/default/"%j.dirs.baseDir
-
+        j.system.fs.createDir(j.system.fs.joinPaths(j.dirs.varDir,"routeros"))
         inputsentence = []
 
     ##cant get it to work because of ansi
@@ -437,10 +437,13 @@ class RouterOS(object):
         cmd="/ip route remove [/ip route find static=yes]"
         self.executeScript(cmd)
 
-    def uploadExecuteScript(self,name,removeAfter=True,vars={}):
-        print "EXECUTE SCRIPT:%s"%name
-        name=name+".rsc"
-        src=j.system.fs.joinPaths(self.configpath,name)
+    def uploadExecuteScript(self,name,removeAfter=True,vars={},srcpath=""):
+        if srcpath=="":
+            print "EXECUTE SCRIPT:%s"%name
+            name=name+".rsc"
+            src=j.system.fs.joinPaths(self.configpath,name)
+        else:
+            src=srcpath
 
         content=j.system.fs.fileGetContents(src)
         for key,val in vars.iteritems():
@@ -477,9 +480,9 @@ class RouterOS(object):
         if content[0]<>"/":
             content="/%s"%content
         name="_tmp_%s"%j.base.idgenerator.generateRandomInt(1,10000)
-        src=j.system.fs.joinPaths(self.configpath,"%s.rsc"%name)
+        src=j.system.fs.joinPaths(j.dirs.varDir,"routeros","%s.rsc"%name)
         j.system.fs.writeFile(filename=src,contents=content)
-        self.uploadExecuteScript(name)
+        self.uploadExecuteScript(name=name,srcpath=src)
         j.system.fs.remove(src)
 
     def uploadFilesFromDir(self,path,dest=""):       
