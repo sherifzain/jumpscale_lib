@@ -13,7 +13,7 @@ vsctl = "/usr/bin/ovs-vsctl"
 ofctl = "/usr/bin/ovs-ofctl"
 ip = "/sbin/ip"
 ethtool = "/sbin/ethtool"
-PHYSMTU = 1550
+PHYSMTU = 2000
 
 # TODO : errorhandling
 def send_to_syslog(msg):
@@ -27,11 +27,19 @@ def send_to_syslog(msg):
 def doexec(args):
     """Execute a subprocess, then return its return code, stdout and stderr"""
     send_to_syslog(args)
-    proc = subprocess.Popen(args, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
+    proc = subprocess.Popen(args, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, bufsize=-1)
     rc = proc.wait()
+    # rc = proc.communicate()
     stdout = proc.stdout
     stderr = proc.stderr
     return rc, stdout, stderr
+
+def dobigexec(args):
+    """Execute a subprocess, then return its return code, stdout and stderr"""
+    send_to_syslog(args)
+    proc = subprocess.Popen(args, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, bufsize=-1)
+    rc = proc.communicate()
+    return rc
 
 
 def get_all_namespaces():

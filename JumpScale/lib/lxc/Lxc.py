@@ -28,7 +28,7 @@ class Lxc():
         if j.application.config.exists('lxc.basepath'):
             self.basepath = j.application.config.get('lxc.basepath')
         else:
-            self.basepath="/mnt/btrfs/lxc" #btrfs subvol create 
+            self.basepath="/mnt/vmstor/lxc" #btrfs subvol create
         if not j.system.fs.exists(path=self.basepath):
             raise RuntimeError("only btrfs lxc supported for now")
         self.intialized=True

@@ -38,11 +38,11 @@ def get_nic_params():
     namespaces = get_all_namespaces()
     def populatenictypes(lines, namespace=None):
         for l in lines:
+            if not 'state' in l: continue
             entry = l.strip().split()
             intf = entry[1].rstrip(':')
             if intf == 'lo' : continue
             nictypes[intf] = {}
-            # if 'lo:' in entry: nictypes[intf]['namespace'] = None params = None
             if 'vxlan' in entry :
                 want = ('state','id' ,'mtu','id','group','dev','port','ttl')
                 params = parse_ipl_line(entry,want)
@@ -73,8 +73,8 @@ def get_nic_params():
         return nictypes
     # local
     cmd = '%s -o -d link show ' % ip
-    (r,s,e) = doexec(cmd.split())
-    lines = s.readlines()
+    intflist = dobigexec(cmd.split())
+    lines = intflist[0].split('\n')
     nictypes = populatenictypes(lines)
     # all namespaces
     for ns in namespaces:
