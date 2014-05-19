@@ -532,6 +532,9 @@ class RouterOS(object):
             forwards = [fw for fw in forwards if 'comment' in fw.keys() and fw['comment'] == tags]
         return forwards
 
-
+    def ping(self,addr):
+        result=self.do("/ping",{"count":1,"address":addr})
+        return result[0]["received"]=='1'
+        
 
 
