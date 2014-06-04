@@ -18,10 +18,9 @@ PHYSMTU = 2000
 # TODO : errorhandling
 def send_to_syslog(msg):
     print msg
-    # pid = os.getpid()    
-    # print ("%s[%d] - %s" % (command_name, pid, msg))    
+    # pid = os.getpid()
+    # print ("%s[%d] - %s" % (command_name, pid, msg))
     # syslog.syslog("%s[%d] - %s" % (command_name, pid, msg))
-
 
 
 def doexec(args):
@@ -33,6 +32,7 @@ def doexec(args):
     stdout = proc.stdout
     stderr = proc.stderr
     return rc, stdout, stderr
+
 
 def dobigexec(args):
     """Execute a subprocess, then return its return code, stdout and stderr"""
@@ -60,6 +60,7 @@ def get_all_ifaces():
             ifaces[i] = addr
     return ifaces
 
+
 def get_all_bridges():
     cmd = '%s list-br' % vsctl
     r, s, e = doexec(cmd.split())
@@ -71,6 +72,7 @@ def ip_link_set(device, args):
     cmd = "ip l set " + device + " " + args
     doexec(cmd.split())
 
+
 def createBridge(name):
     cmd = '%s --may-exist add-br %s' % (vsctl, name)
     r,s,e = doexec(cmd.split())
@@ -79,7 +81,7 @@ def createBridge(name):
 
 
 def destroyBridge(name):
-    cmd = '%s --may-exist del-br %s' % (vsctl, name)
+    cmd = '%s --if-exists del-br %s' % (vsctl, name)
     r,s,e = doexec(cmd.split())
     if r:
         raise RuntimeError("Problem with destruction of bridge %s, err was: %s" % (name,e))
@@ -97,6 +99,7 @@ def VlanPatch(parentbridge, vlanbridge, vlanid):
     if r:
         raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
 
+
 def addVlanPatch(parbr,vlbr,id, mtu=None):
     parport = "{}-{!s}".format(vlbr,id)
     brport  = "{}-{!s}".format(parbr,id)
@@ -107,6 +110,7 @@ def addVlanPatch(parbr,vlbr,id, mtu=None):
         ip_link_set(vlbr,'mtu {0}'.format(mtu))
     if r:
         raise RuntimeError("Add extra vlan pair failed %s" % (e.readlines()))
+
 
 def createNameSpace(name):
     if name not in get_all_namespaces():
@@ -155,7 +159,8 @@ def createVXlan(vxname,vxid,multicast,vxbackend):
     """
     cmd = 'ip link add %s type vxlan id %s group %s ttl 60 dev %s' % (vxname, vxid, multicast, vxbackend)
     r,s,e = doexec(cmd.split())
-    ip_link_set(vxname,'mtu 1500 up') 
+    disable_ipv6(vxname)
+    ip_link_set(vxname,'mtu 1500 up')
     if r:
         send_to_syslog("Problem with creation of vxlan %s, err was: %s" % (vxname ,e.readlines()))
 
@@ -199,11 +204,12 @@ def addIPv6(interface, ipobj, namespace=None):
 
 
 def connectIfToBridge(bridge,interface):
+    cmd = '%s --if-exists del-port %s %s' %(vsctl,bridge,interface)
+    r,s,e = doexec(cmd.split())
     cmd = '%s --may-exist add-port %s %s' %(vsctl,bridge,interface)
     r,s,e = doexec(cmd.split())
     if r:
         raise RuntimeError('Error adding port %s to bridge %s' %(interface,bridge))
-
 
 def connectIfToNameSpace(nsname,interface):
     cmd = '%s link set %s netns %s' %( ip, interface, nsname)
@@ -217,11 +223,13 @@ def disable_ipv6(interface):
         cmd = 'sysctl -w net.ipv6.conf.%s.disable_ipv6=1' % interface
         r,s,e = doexec(cmd.split())
 
+
 def setMTU(interface,mtu):
     cmd = 'ip link set %s mtu %s' % (interface,mtu)
     r,s,e = doexec(cmd.split())
     if r:
         raise RuntimeError('Could not set %s to MTU %s' %(interface,mtu))
+
 
 def addBond(bridge, bondname, iflist, lacp="active", lacp_time="fast", mode="balance-tcp", trunks=None):
     # bond_mode=balance-tcp lacp=active bond_fake_iface=false other_config:lacp-time=fast bond_updelay=2000 bond_downdelay=400
@@ -235,8 +243,8 @@ def addBond(bridge, bondname, iflist, lacp="active", lacp_time="fast", mode="bal
     :param mode: balance-tcp, balance-slb, active-passive
     :param trunks: allowed VLANS (list or tuple)
     """
-    if type(iflist) is str:
-        intf = re.split('\W+', iflist)
+
+    intf = re.split('\W+', iflist)
     if type(trunks) is str:
         tr = re.split('\W+', trunks)
     buildup = "add-bond %s %s " % (bridge, bondname) + " ".join(e for e in list(set(intf))) + " lacp=%s " % lacp

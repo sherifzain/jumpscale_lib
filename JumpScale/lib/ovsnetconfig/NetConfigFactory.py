@@ -28,9 +28,9 @@ class NetConfigFactory():
 
     def _exec(self,cmd,failOnError=True):
         print cmd
-        rc,out=j.system.process.execute(cmd,dieOnNonZeroExitCode=failOnError)        
+        rc,out=j.system.process.execute(cmd,dieOnNonZeroExitCode=failOnError)
         return out
-        
+
     def removeOldConfig(self):
         cmd="brctl show"
         for line in self._exec(cmd).split("\n"):
@@ -48,7 +48,7 @@ class NetConfigFactory():
             self._exec("ovs-vsctl del-br %s"%intname,False)
 
         out=self._exec("virsh net-list",False)
-        if out.find("virsh: not found")==-1:    
+        if out.find("virsh: not found")==-1:
             state="start"
             for line in out.split("\n"):
                 if state=="found":
@@ -67,7 +67,7 @@ class NetConfigFactory():
         # Not used and expensive self.getConfigFromSystem(reload=True)
 
         j.system.fs.writeFile(filename="/etc/network/interfaces",contents="auto lo\n iface lo inet loopback\n\n")
-   
+
     def initNetworkInterfaces(self):
         """
         Resets /etc/network/interfaces with a basic configuration
@@ -114,16 +114,16 @@ class NetConfigFactory():
         bridge.create()
         bridge.connect(vxlan.name)
         return vxlan
-    
+
     def getType(self,interfaceName):
         layout=self.getConfigFromSystem()
         if not layout.has_key(interfaceName):
             raise RuntimeError("cannot find interface %s"%interfaceName)
-        interf=layout[interfaceName]        
+        interf=layout[interfaceName]
         if interf["params"].has_key("type"):
             return interf["params"]["type"]
         return None
-        
+
     def setBackplaneDhcp(self,interfacename="eth0",backplanename="Public"):
         """
         DANGEROUS, will remove old configuration
@@ -180,7 +180,7 @@ iface $iname inet manual
 auto $interface
 allow-ovs $interface
 iface $interface inet static
- address $ipbase 
+ address $ipbase
  netmask $mask
  $gw
 """
@@ -244,7 +244,7 @@ iface $bondname inet manual
 auto $BPNAME
 allow-ovs $BPNAME
 iface $BPNAME inet static
- address $ipbase 
+ address $ipbase
  netmask $mask
  dns-nameserver 8.8.8.8 8.8.4.4
  ovs_type OVSBridge
@@ -258,7 +258,6 @@ iface $iname inet manual
  up ip link set $iname mtu $MTU
 """
         n=netaddr.IPNetwork(ipaddr)
-
         C=C.replace("$BPNAME", str(backplanename))
         C=C.replace("$iname", interfacename)
         C=C.replace("$ipbase", str(n.ip))
@@ -281,7 +280,7 @@ iface $iname inet manual
 auto $BPNAME
 allow-ovs $BPNAME
 iface $BPNAME inet static
- address $ipbase 
+ address $ipbase
  netmask $mask
  dns-nameserver 8.8.8.8 8.8.4.4
  ovs_type OVSBridge
@@ -327,7 +326,7 @@ iface $bondname inet manual
             if "PHYS" in data["detail"] and intname<>interfacenameToExclude:
                 self._exec("ip addr flush dev %s" % intname, False)
                 self._exec("ip link set %s down"%intname,False)
-        
+
         if backplanename<>None:
             self._exec("ifdown %s"%backplanename, failOnError=False)
             # self._exec("ifup %s"%backplanename, failOnError=True)

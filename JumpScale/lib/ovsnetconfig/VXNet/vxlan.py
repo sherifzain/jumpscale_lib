@@ -103,7 +103,11 @@ class VXNet(object):
             addIPv4(vxlan.name, self.ipv4)
             addIPv6(vxlan.name, self.ipv6)
 
-    def destroy(self):
+    def rebuild(self,netid):
+        # destroy all connected with id
+        pass
+
+    def destroy(self,netid):
         # destroy all connected with id
         pass
 
