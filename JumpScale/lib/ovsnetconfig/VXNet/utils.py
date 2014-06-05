@@ -17,7 +17,8 @@ PHYSMTU = 2000
 
 # TODO : errorhandling
 def send_to_syslog(msg):
-    print msg
+    pass
+    #print msg
     # pid = os.getpid()
     # print ("%s[%d] - %s" % (command_name, pid, msg))
     # syslog.syslog("%s[%d] - %s" % (command_name, pid, msg))
