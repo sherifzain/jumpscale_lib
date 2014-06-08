@@ -25,12 +25,15 @@ def acquire_lock(path):
             send_to_syslog("failed to acquire lock %s because '%s' - waiting 1 second" % (path, e))
             time.sleep(1)
 
+
 def wait_for_if(interface):
     pass
+
 
 def pprint_dict(a):
     from pprint import pprint
     pprint(dict(a.items()))
+
 
 def get_nic_params():
     nictypes = {}
@@ -101,6 +104,7 @@ def parse_ipl_line(line, params):
             nicsettings[p] = line[line.index(p)+1]  #watch out for index out of range
     return nicsettings
 
+
 def get_nic_detail(interface):
     prefix= '/sys/class/net'
     # every interface has a mac
@@ -147,6 +151,7 @@ def find_veth_peer(interface,ns=None):
         return peer[0]
     else: return None
 
+
 def add_ips_to(physlayout):
     fullset = {}
     iplist = get_ip_addrs()
@@ -160,6 +165,7 @@ def add_ips_to(physlayout):
         if physlayout[key]['namespace'] != None:
             fullset[key]['ipaddrs'] = get_ip_addrs(namespace=physlayout[key]['namespace'])
     return fullset
+
 
 def get_ip_addrs(onlypermanent=False, namespace=None):
     if namespace == None:
@@ -193,6 +199,7 @@ def isup(interface):
         return True
     return False
 
+
 def getnetworkstructure(onlypermanent=True,without_ip=False):
     """
 
@@ -220,6 +227,7 @@ def getnetworkstructure(onlypermanent=True,without_ip=False):
             s[intf]['speed'] = speed
     return s
 
+
 def cleanup_flows(bridge_name,interface):
     """
     flows of which ports do not exist any more get removed (generic cleanup)
@@ -246,7 +254,6 @@ def list_ports_in_of(interface):
     return ports
 
 
-
 def get_attached_mac_port(virt_vif):
     """
     @param virt_vif:
@@ -271,6 +278,7 @@ def get_bridge_name(vif_name):
     (rc, stdout, stderr) = doexec([vsctl, "port-to-br", vif_name])
     return stdout.readline().strip()
 
+
 def list_ports(bridge_name):
     """
     @param bridge_name:
@@ -288,6 +296,7 @@ def get_vswitch_port(vif_name):
     """
     (rc, stdout, stderr) = doexec([vsctl, "get", "interface", vif_name, "ofport"])
     return stdout.readline().strip()
+
 
 def clear_vswitch_rules(bridge_name, port):
     """

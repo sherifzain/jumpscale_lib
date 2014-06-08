@@ -2,6 +2,10 @@ __author__ = 'delandtj'
 from vxlan import *
 from netaddr import *
 
+def rebuildVXLan():
+    nl = NetLayout()
+    layout = nl.load()
+
 
 if __name__ == "__main__":
     print('Getting Config')

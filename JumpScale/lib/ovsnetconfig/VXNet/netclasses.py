@@ -4,7 +4,7 @@ from utils import *
 
 
 class VXlan(object):
-    def __init__(self,oid,backend='Backplane1'):
+    def __init__(self,oid,backend='vxbackend'):
         def bytes(num):
             return num >> 8, num & 0xFF
         self.multicastaddr = '239.0.%s.%s' % bytes(oid.oid)
@@ -17,6 +17,9 @@ class VXlan(object):
         destroyVXlan(self.name)
     def no6(self):
         disable_ipv6(self.name)
+    def verify(self):
+        pass
+
 
 
 class Bridge(object):
@@ -31,10 +34,11 @@ class Bridge(object):
     def no6(self):
         disable_ipv6(self.name)
 
+
 class VXBridge(Bridge):
     def __init__(self,oid):
+        assert isinstance(oid.tostring, object)
         self.name = 'space_' + oid.tostring()
-
 
 class BondBridge(object):
     def __init__(self, name, interfaces, bondname=None, trunks=None):
@@ -63,6 +67,7 @@ class NameSpace(object):
         destroyNameSpace(self.name)
     def connect(self,interface):
         connectIfToNameSpace(self.name,interface)
+
 
 class VXNameSpace(NameSpace):
     def __init__(self,oid):
