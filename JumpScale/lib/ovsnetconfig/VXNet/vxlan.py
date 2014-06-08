@@ -20,7 +20,7 @@ class NetLayout:
         self.load()
 
     def is_phys(self,interface):
-        if 'PHYS' in self.nicdetail[interface]['phys']:
+        if 'PHYS' in self.nicdetail[interface]['detail']:
             return True
         return False
 
