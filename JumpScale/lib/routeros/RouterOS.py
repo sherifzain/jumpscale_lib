@@ -8,6 +8,7 @@ class RouterOSFactory(object):
 #!/usr/bin/python
 
 import sys, posix, time, md5, binascii, socket, select
+import netaddr
 
 class ApiRos:
     "Routeros api"
@@ -58,13 +59,13 @@ class ApiRos:
             r.append(w)
             
     def writeWord(self, w):
-        print "<<< " + w
+        #print "<<< " + w
         self.writeLen(len(w))
         self.writeStr(w)
 
     def readWord(self):
         ret = self.readStr(self.readLen())
-        print ">>> " + ret
+        #print ">>> " + ret
         return ret
 
     def writeLen(self, l):
@@ -158,7 +159,7 @@ class RouterOS(object):
         if res<>True:
             raise RuntimeError("Could not login into RouterOS: %s"%host)
         self.configpath="%s/apps/routeros/configs/default/"%j.dirs.baseDir
-
+        j.system.fs.createDir(j.system.fs.joinPaths(j.dirs.varDir,"routeros"))
         inputsentence = []
 
     ##cant get it to work because of ansi
@@ -233,6 +234,8 @@ class RouterOS(object):
             cmds.append(arg)
         if args<>{}:
             cmds.append("")
+        print ">>> DO:"
+        print cmds
         r=self.api.talk(cmds)
         return self._parse_result(r)
  
@@ -388,8 +391,20 @@ class RouterOS(object):
 
     def _getFtp(self):
         from ftplib import FTP
-        self.ftp=FTP(host=self.host, user=self.login, passwd=self.password)
+        if j.system.net.tcpPortConnectionTest(self.host,21):
+            self.ftp=FTP(host=self.host, user=self.login, passwd=self.password)
+        elif j.system.net.tcpPortConnectionTest(self.host,9021):
+            self.ftp=FTP()
+            self.ftp.connect(host="%s"%self.host,port=9021)
+            self.ftp.login(user=self.login, passwd=self.password)
+        else:
+            raise RuntimeError("Could not find port 21 or 9021 to open ftp connection to %s"%self.host)
         
+    def networkId2NetworkAddr(self,networkid):
+        netrange=j.application.config.get("vfw.netrange.internal")
+        net=netaddr.IPNetwork(netrange)
+        return str(netaddr.IPAddress(net.first+int(networkid)))
+            
     def close(self):
         self.ftp.close()
 
@@ -422,21 +437,52 @@ class RouterOS(object):
         cmd="/ip route remove [/ip route find static=yes]"
         self.executeScript(cmd)
 
-    def uploadExecuteScript(self,name,removeAfter=True):
-        print "EXECUTE SCRIPT:%s"%name
-        name=name+".rsc"
-        src=j.system.fs.joinPaths(self.configpath,name)
+    def uploadExecuteScript(self,name,removeAfter=True,vars={},srcpath=""):
+        if srcpath=="":
+            print "EXECUTE SCRIPT:%s"%name
+            name=name+".rsc"
+            src=j.system.fs.joinPaths(self.configpath,name)
+        else:
+            src=srcpath
+
+        content=j.system.fs.fileGetContents(src)
+        for key,val in vars.iteritems():
+            content=content.replace(key,val)
+        src=j.system.fs.joinPaths(j.dirs.tmpDir,j.system.fs.getTempFileName())
+        j.system.fs.writeFile(src,content)
+
+        print "EXECUTE:"
+        print content
+        print "#################END##################"
+        
         self.upload(src,name)
         self.do("/import", args={"file-name":name})
         self.delfile(name, raiseError=False)
+
+        j.system.fs.remove(src)
+
+    def resetMac(self,interface):
+        iterface=None
+        nr=0
+        for item in self.interface_getall():
+            if item["name"]==interface:
+                interface=item
+                break
+            nr+=1
+        
+        if interface==None:
+            raise RuntimeError("Could not find interface %s"%interface)
+
+        self.do("/interface/ethernet/reset-mac-address",args={"numbers":str(nr)})
+
 
     def executeScript(self,content):
         if content[0]<>"/":
             content="/%s"%content
         name="_tmp_%s"%j.base.idgenerator.generateRandomInt(1,10000)
-        src=j.system.fs.joinPaths(self.configpath,"%s.rsc"%name)
+        src=j.system.fs.joinPaths(j.dirs.varDir,"routeros","%s.rsc"%name)
         j.system.fs.writeFile(filename=src,contents=content)
-        self.uploadExecuteScript(name)
+        self.uploadExecuteScript(name=name,srcpath=src)
         j.system.fs.remove(src)
 
     def uploadFilesFromDir(self,path,dest=""):       
@@ -489,6 +535,9 @@ class RouterOS(object):
             forwards = [fw for fw in forwards if 'comment' in fw.keys() and fw['comment'] == tags]
         return forwards
 
-
+    def ping(self,addr):
+        result=self.do("/ping",{"count":1,"address":addr})
+        return result[0]["received"]=='1'
+        
 
 
