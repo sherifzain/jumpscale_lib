@@ -493,11 +493,12 @@ class RouterOS(object):
                 dest2=j.system.fs.getBaseName(item)
             self.upload(item,dest2)
 
-    def addPortForwardRule(self, dstaddress,dstport, toaddress, toport, tags=None):
+    def addPortForwardRule(self, dstaddress,dstport, toaddress, toport, tags=None, protocol=None):
+        protocol = protocol or 'tcp'
         arg = {}
         arg['chain'] = 'dstnat'
         arg['dst-address'] = dstaddress
-        arg['protocol'] = 'tcp'
+        arg['protocol'] = protocol
         arg['dst-port'] = dstport
         arg['action'] = 'dst-nat'
         arg['to-addresses'] = toaddress
