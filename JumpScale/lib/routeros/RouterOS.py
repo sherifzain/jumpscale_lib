@@ -539,6 +539,5 @@ class RouterOS(object):
     def ping(self,addr):
         result=self.do("/ping",{"count":1,"address":addr})
         return result[0]["received"]=='1'
-        
 
 
