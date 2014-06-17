@@ -29,26 +29,11 @@ class MS1(object):
         return j.core.portal.getClient(host, 443, self.secret)
 
     def deployAppDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='', jpname='', config='', description=''):
-        # get actors
+        machine_id = self.deployMachineDeck(location, name, memsize, ssdsize, vsansize, description)
         api = self.getApiConnection(location)
-        cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
-        images_actor = api.getActor('cloudapi', 'images')
-        machines_actor = api.getActor('cloudapi', 'machines')
-        sizes_actor = api.getActor('cloudapi', 'sizes')
         portforwarding_actor = api.getActor('cloudapi', 'portforwarding')
-
-        # validate args
-        cloudspace_ids = [cs['id'] for cs in cloudspaces_actor.list() if cs['location'] == location]
-        if not cloudspace_ids:
-            raise RuntimeError('Could not find a matching cloudspace')
-        image_ids = [image['id'] for image in images_actor.list() if image['name'] == self.IMAGE_NAME]
-        if not image_ids:
-            raise RuntimeError('Could not find a matching image')
-        size_ids = [size['id'] for size in sizes_actor.list() if size['memory'] == memsize]
-        if not size_ids:
-            raise RuntimeError('Could not find a matching size')
-        # create machine
-        machine_id = machines_actor.create(cloudspaceId=cloudspace_ids[0], name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=ssdsize)
+        cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
+        machines_actor = api.getActor('cloudapi', 'machines')
         # create ssh port-forward rule
         for _ in range(30):
             machine = machines_actor.get(machine_id)
@@ -90,3 +75,25 @@ class MS1(object):
                 ports = hrd.getList('services_ports')
                 for port in ports:
                     portforwarding_actor.create(machine['cloudspaceid'], cloudspace['publicipaddress'], str(port), machine['id'], str(port))
+
+    def deployMachineDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, description=''):
+        # get actors
+        api = self.getApiConnection(location)
+        cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
+        images_actor = api.getActor('cloudapi', 'images')
+        machines_actor = api.getActor('cloudapi', 'machines')
+        sizes_actor = api.getActor('cloudapi', 'sizes')
+
+        # validate args
+        cloudspace_ids = [cs['id'] for cs in cloudspaces_actor.list() if cs['location'] == location]
+        if not cloudspace_ids:
+            raise RuntimeError('Could not find a matching cloudspace')
+        image_ids = [image['id'] for image in images_actor.list() if image['name'] == self.IMAGE_NAME]
+        if not image_ids:
+            raise RuntimeError('Could not find a matching image')
+        size_ids = [size['id'] for size in sizes_actor.list() if size['memory'] == memsize]
+        if not size_ids:
+            raise RuntimeError('Could not find a matching size')
+        # create machine
+        machine_id = machines_actor.create(cloudspaceId=cloudspace_ids[0], name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=ssdsize)
+        return machine_id
