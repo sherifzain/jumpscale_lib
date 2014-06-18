@@ -28,7 +28,7 @@ class MS1(object):
         host = 'www.mothership1.com' if location == 'ca1' else '%s.mothership1.com' % location
         return j.core.portal.getClient(host, 443, self.secret)
 
-    def deployAppDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='', jpname='', config='', description=''):
+    def deployAppDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='solutions', jpname=None, config=None, description=None):
         machine_id = self.deployMachineDeck(location, name, memsize, ssdsize, vsansize, description)
         api = self.getApiConnection(location)
         portforwarding_actor = api.getActor('cloudapi', 'portforwarding')
