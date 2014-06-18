@@ -17,5 +17,5 @@ def action(appkwargs, hrd):
     j.tools.ms1.setSecret(appkwargs['appdeck.secret'], True)
     j.tools.ms1.deployAppDeck(appkwargs['appdeck.location'], appkwargs['appdeck.app.name'], appkwargs['appdeck.app.memsize'],
                               appkwargs['appdeck.app.ssdsize'], appkwargs['appdeck.app.vsansize'], appkwargs['appdeck.app.jpdomain'],
-                              appkwargs['appdeck.app.jpname'], config=hrd, appkwargs['appdeck.app.description'])
+                              appkwargs['appdeck.app.jpname'], config=hrd, description=appkwargs['appdeck.app.description'])
     return True
