@@ -72,6 +72,7 @@ class MS1(object):
             ssh_connection.sudo('jpackage install -n %s -d %s' % (jpname, jpdomain))
 
         #cleanup 
+        cloudspace_forward_rules = portforwarding_actor.list(machine['cloudspaceid'])
         ssh_rule_id = [rule['id'] for rule in cloudspace_forward_rules if rule['publicPort'] == ssh_port][0]
         portforwarding_actor.delete(machine['cloudspaceid'], ssh_rule_id)
         if config:
