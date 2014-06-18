@@ -3,6 +3,7 @@ import asyncore
 from JumpScale import j
 import jinja2
 import JumpScale.grid.agentcontroller
+import JumpScale.baselib.mailclient
 
 class MailRobot(smtpd.SMTPServer):
 
@@ -40,11 +41,11 @@ class MailRobot(smtpd.SMTPServer):
 You request for deployment has failed.
 Our support team has been notified and will contact you as soon as possible
 """
-            j.clients.mail.sendmail([mailfrom], 'mailrobot@mothership1.com', 'Deployment %s Failed' % appname, msg)
+            j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', 'Deployment %s Failed' % appname, msg)
         else:
             template = self.jenv.get_template("%s.tmpl" % appname)
             msg = template.render(**hrddict)
-            j.clients.mail.sendmail([mailfrom], 'mailrobot@mothership1.com', 'Deployment %s Succesfull', msg)
+            j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', 'Deployment %s Succesfull', msg)
 
 class MailRobotFactory(object):
     def start(self):
