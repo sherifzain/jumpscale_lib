@@ -46,6 +46,8 @@ class MS1(object):
                 break
             else:
                 time.sleep(2)
+        if not j.basetype.ipaddress.check(machine['interfaces'][0]['ipAddress']):
+            raise RuntimeError('Machine was created, but never got an IP address')
         cloudspace_forward_rules = portforwarding_actor.list(machine['cloudspaceid'])
         public_ports = [rule['publicPort'] for rule in cloudspace_forward_rules]
         ssh_port = '2222'
