@@ -20,6 +20,11 @@ class MS1(object):
         else:
             raise RuntimeError('Invalid username and/or password')
 
+    def setSecret(self, secret, remember=False):
+        self.secret = secret
+        if remember:
+            self.rememberSecret()
+
     def rememberSecret(self):
         hrd_path = j.system.fs.joinPaths(j.dirs.hrdDir, 'ms1.hrd')
         j.system.fs.writeFile(hrd_path, 'ms1.secret=%s' % self.secret)
