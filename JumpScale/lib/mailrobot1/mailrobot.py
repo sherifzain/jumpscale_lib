@@ -10,12 +10,24 @@ class MailRobot(smtpd.SMTPServer):
         templatefolder = j.system.fs.joinPaths(j.dirs.baseDir, 'apps', 'mailrobot', 'templates')
         loader = jinja2.FileSystemLoader(templatefolder)
         self.jenv = jinja2.Environment(loader=loader)
-        MailRobot.__init__(self, *args, **kwargs)
+        smtpd.SMTPServer.__init__(self, *args, **kwargs)
     
     def process_message(self, peer, mailfrom, rcpttos, data):
-        result = self.acl.executeJumpScript('jumpscale', 'mailrobotrequest', nid=j.application.whoAmI, args={'data', data})
-        appname = ""
-        hrddict = {}
+        hrd = j.core.hrd.getHRD(content=data)
+        allkeys = hrd.getKeysFromPrefix('')
+        appdict = dict()
+        hrddict = dict()
+        for key in allkeys:
+            if key.startswith('appdeck'):
+                appdict[key] = hrd.get(key)
+            hrddict[key] = hrd.get(key)
+        hrd = ""
+        for line in data.splitlines():
+            if line.startswith('appdeck'):
+                continue
+            hrd += line + "\n"
+        result = self.acl.executeJumpScript('jumpscale', 'mailrobotrequest', nid=j.application.whoAmI, args={'appkwargs': appdict, 'hrd': hrd})
+        appname = appdict.get("appdeck_app_name", "Unknown")
         if result['state'] != "OK":
             msg = """
 You request for deployment has failed.
@@ -29,5 +41,5 @@ Our support team has been notified and will contact you as soon as possible
 
 class MailRobotFactory(object):
     def start(self):
-        MailRobot(('127.0.0.1', 1025), None)
+        MailRobot(('0.0.0.0', 25), None)
         asyncore.loop()
