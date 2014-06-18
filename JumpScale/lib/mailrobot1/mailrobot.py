@@ -2,6 +2,7 @@ import smtpd
 import asyncore
 from JumpScale import j
 import jinja2
+import JumpScale.grid.agentcontroller
 
 class MailRobot(smtpd.SMTPServer):
 
@@ -13,11 +14,17 @@ class MailRobot(smtpd.SMTPServer):
         smtpd.SMTPServer.__init__(self, *args, **kwargs)
     
     def process_message(self, peer, mailfrom, rcpttos, data):
-        hrd = j.core.hrd.getHRD(content=data)
-        allkeys = hrd.getKeysFromPrefix('')
+        try:
+            hrd = j.core.hrd.getHRD(content=data)
+        except:
+            print "Invalid hrd given %s" % data
+            raise
+        allkeys = hrd.prefix('')
         appdict = dict()
         hrddict = dict()
         for key in allkeys:
+            if key.startswith('_') or key in ('changed', 'path'):
+                continue
             if key.startswith('appdeck'):
                 appdict[key] = hrd.get(key)
             hrddict[key] = hrd.get(key)
@@ -26,7 +33,7 @@ class MailRobot(smtpd.SMTPServer):
             if line.startswith('appdeck'):
                 continue
             hrd += line + "\n"
-        result = self.acl.executeJumpScript('jumpscale', 'mailrobotrequest', nid=j.application.whoAmI, args={'appkwargs': appdict, 'hrd': hrd})
+        result = self.acl.executeJumpScript('jumpscale', 'mailrobotrequest', nid=j.application.whoAmI.nid, args={'appkwargs': appdict, 'hrd': hrd})
         appname = appdict.get("appdeck_app_name", "Unknown")
         if result['state'] != "OK":
             msg = """
@@ -41,5 +48,5 @@ Our support team has been notified and will contact you as soon as possible
 
 class MailRobotFactory(object):
     def start(self):
-        MailRobot(('0.0.0.0', 25), None)
+        MailRobot(('0.0.0.0', 1025), None)
         asyncore.loop()
