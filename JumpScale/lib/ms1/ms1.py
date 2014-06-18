@@ -78,7 +78,7 @@ class MS1(object):
         ssh_rule_id = [rule['id'] for rule in cloudspace_forward_rules if rule['publicPort'] == ssh_port][0]
         portforwarding_actor.delete(machine['cloudspaceid'], ssh_rule_id)
         if config:
-            hrd = j.core.hrd.getHRD(config)
+            hrd = j.core.hrd.getHRD(content=config)
             if hrd.exists('services_ports'):
                 ports = hrd.getList('services_ports')
                 for port in ports:
