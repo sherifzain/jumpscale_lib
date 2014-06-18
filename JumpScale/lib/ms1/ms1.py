@@ -63,6 +63,7 @@ class MS1(object):
         ssh_connection = j.remote.cuisine.api
         username, password = machine['accounts'][0]['login'], machine['accounts'][0]['password']
         ssh_connection.fabric.api.env['password'] = password
+        ssh_connection.fabric.api.env['connection_attempts'] = 5
         ssh_connection.connect('%s:%s' % (cloudspace['publicipaddress'], ssh_port), username)
 
         # install jpackages there
