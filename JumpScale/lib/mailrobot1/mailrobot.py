@@ -44,6 +44,7 @@ Our support team has been notified and will contact you as soon as possible
             j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', 'Deployment %s Failed' % appname, msg)
         else:
             template = self.jenv.get_template("%s.tmpl" % appname)
+            hrddict.update(result['result'])
             msg = template.render(**hrddict)
             j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', 'Deployment %s Succesfull', msg)
 

@@ -83,6 +83,7 @@ class MS1(object):
                 ports = hrd.getList('services_ports')
                 for port in ports:
                     portforwarding_actor.create(machine['cloudspaceid'], cloudspace['publicipaddress'], str(port), machine['id'], str(port))
+        return {'publicIp': cloudspace['publicipaddress']}
 
     def deployMachineDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, description=''):
         # get actors
