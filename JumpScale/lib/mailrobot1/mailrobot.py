@@ -60,12 +60,12 @@ class MailRobot(smtpd.SMTPServer):
                 if key.startswith('appdeck'):
                     appdict[key] = hrd.get(key)
                 hrddict[key] = hrd.get(key)
-            hrdstr = ""
-            for line in data.splitlines():
+            hrd_config = ""
+            for line in hrdstr.splitlines():
                 if line.startswith('appdeck'):
                     continue
-                hrdstr += line + "\n"
-            result = self.acl.executeJumpScript('jumpscale', 'mailrobotrequest', nid=j.application.whoAmI.nid, args={'appkwargs': appdict, 'hrd': hrdstr})
+                hrd_config += line + "\n"
+            result = self.acl.executeJumpScript('jumpscale', 'mailrobotrequest', nid=j.application.whoAmI.nid, args={'appkwargs': appdict, 'hrd': hrd_config})
             appname = appdict.get("appdeck.app.name", "default")
             if result['state'] != "OK":
                 msg = """
