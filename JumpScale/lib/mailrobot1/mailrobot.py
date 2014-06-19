@@ -41,7 +41,7 @@ class MailRobot(smtpd.SMTPServer):
                 else:
                     for ct, msg_part in ct2msg.iteritems():
                         if 'text' in ct:
-                            hrdstr = _html2text(msg_part.get_payload())
+                            hrdstr = self._html2text(msg_part.get_payload())
                             break
             else:
                 hrdstr = msg.get_payload()
