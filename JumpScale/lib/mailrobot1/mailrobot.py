@@ -1,22 +1,22 @@
-import smtpd
-import asyncore
 from JumpScale import j
 import JumpScale.grid.agentcontroller
 import JumpScale.baselib.mailclient
 import email
+import gevent
+from gsmtpd import SMTPServer
 
 # for html parsing
 from htmllib import HTMLParser
 from formatter import AbstractFormatter, DumbWriter
 from cStringIO import StringIO
 
-class MailRobot(smtpd.SMTPServer):
+class MailRobot(SMTPServer):
 
     def __init__(self, *args, **kwargs):
         self.emailparser = email.Parser.Parser()
         self.acl = j.clients.agentcontroller.get()
         self.templatefolder = j.system.fs.joinPaths(j.dirs.baseDir, 'apps', 'mailrobot', 'templates')
-        smtpd.SMTPServer.__init__(self, *args, **kwargs)
+        SMTPServer.__init__(self, *args, **kwargs)
 
     def _html2text(self, html):
         output = StringIO()
@@ -26,6 +26,9 @@ class MailRobot(smtpd.SMTPServer):
         return output.getvalue()
     
     def process_message(self, peer, mailfrom, rcpttos, data):
+        gevent.spawn(self.green_message, peer, mailfrom, rcpttos, data)
+
+    def green_message(self, peer, mailfrom, rcpttos, data):
         mailserver = j.application.config.get('mailrobot.mailserver')
         msg = self.emailparser.parsestr(data)
         if mailserver != msg['To'].split('@')[1]:
@@ -86,5 +89,5 @@ Please try again later.
 
 class MailRobotFactory(object):
     def start(self):
-        MailRobot(('0.0.0.0', 25), None)
-        asyncore.loop(timeout=300)
+        robot = MailRobot(('0.0.0.0', 25))
+        robot.serve_forever()
