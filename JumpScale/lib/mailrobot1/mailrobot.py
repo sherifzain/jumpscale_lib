@@ -5,6 +5,11 @@ import JumpScale.grid.agentcontroller
 import JumpScale.baselib.mailclient
 import email
 
+# for html parsing
+from htmllib import HTMLParser
+from formatter import AbstractFormatter, DumbWriter
+from cStringIO import StringIO
+
 class MailRobot(smtpd.SMTPServer):
 
     def __init__(self, *args, **kwargs):
@@ -12,6 +17,13 @@ class MailRobot(smtpd.SMTPServer):
         self.acl = j.clients.agentcontroller.get()
         self.templatefolder = j.system.fs.joinPaths(j.dirs.baseDir, 'apps', 'mailrobot', 'templates')
         smtpd.SMTPServer.__init__(self, *args, **kwargs)
+
+    def _html2text(self, html):
+        output = StringIO()
+        writer = DumbWriter(output)
+        p = HTMLParser(AbstractFormatter(writer))
+        p.feed(html)
+        return output.getvalue()
     
     def process_message(self, peer, mailfrom, rcpttos, data):
         mailserver = j.application.config.get('mailrobot.mailserver')
@@ -21,7 +33,18 @@ class MailRobot(smtpd.SMTPServer):
             return
         mailfrom = msg['From']
         try:
-            hrdstr = msg.get_payload()
+            if msg.is_multipart():
+                msg_parts = msg.get_payload()
+                ct2msg = dict([(msg_part.get_content_type(), msg_part) for msg_part in msg_parts])
+                if 'text/plain' in ct2msg:
+                    hrdstr = ct2msg['text/plain'].get_payload()
+                else:
+                    for ct, msg_part in ct2msg.iteritems():
+                        if 'text' in ct:
+                            hrdstr = _html2text(msg_part.get_payload())
+                            break
+            else:
+                hrdstr = msg.get_payload()
             try:
                 hrd = j.core.hrd.getHRD(content=hrdstr)
             except:
