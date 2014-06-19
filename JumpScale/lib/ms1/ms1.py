@@ -60,12 +60,8 @@ class MS1(object):
                 ssh_port = str(int(ssh_port) + 1)
 
         # do an ssh connection to the machine
-        start = time.time()
-        while start + 60 > time.time():
-            if j.system.net.tcpPortConnectionTest(cloudspace['publicipaddress'], int(ssh_port)):
-                break
-        else:
-            RuntimeError("Failed to connect to %s %s" % (cloudspace['publicipaddress'], ssh_port))
+        if not j.system.net.waitConnectionTest(cloudspace['publicipaddress'], int(ssh_port), 60):
+            raise RuntimeError("Failed to connect to %s %s" % (cloudspace['publicipaddress'], ssh_port))
         ssh_connection = j.remote.cuisine.api
         username, password = machine['accounts'][0]['login'], machine['accounts'][0]['password']
         ssh_connection.fabric.api.env['password'] = password
