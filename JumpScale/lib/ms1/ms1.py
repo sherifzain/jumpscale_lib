@@ -20,6 +20,10 @@ class MS1(object):
         else:
             raise RuntimeError('Invalid username and/or password')
 
+    def validateSpaceSecrert(self, space_secret):
+        # TODO: search spaces objects, get space with the given space secret, raise if it doesn't exist, else return space location
+        return 'ca1'
+
     def setSecret(self, secret, remember=False):
         self.secret = secret
         if remember:
