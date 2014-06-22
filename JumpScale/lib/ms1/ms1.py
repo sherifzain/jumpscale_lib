@@ -113,3 +113,72 @@ class MS1(object):
         # create machine
         machine_id = machines_actor.create(cloudspaceId=cloudspace_ids[0], name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=ssdsize)
         return machine_id
+
+    def listMachinesInSpace(self, location):
+        # get actors
+        api = self.getApiConnection(location)
+        cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
+        machines_actor = api.getActor('cloudapi', 'machines')
+
+        # get cloudspaceid
+        cloudspace_id = [cb['id'] for cb in cloudspaces_actor.list() if cb['location'] == location]
+        if not cloudspace_id:
+            raise
+        cloudspace_id = cloudspace_id[0]
+
+        # list machines
+        machines = machines_actor.list(cloudspaceId=cloudspace_id)
+        return machines
+
+    def deleteMachine(self, location, name):
+        # get actors
+        api = self.getApiConnection(location)
+        machines_actor = api.getActor('cloudapi', 'machines')
+
+        # delete machine
+        machine_id = [machine['id'] for machine in machines_actor.list() if machine['name'] == name]
+        if not machine_id:
+            raise
+        machine_id = machine_id[0]
+
+        machine = machines_actor.delete(machine_id)
+        return True
+
+    def startMachine(self, location, name):
+        # get actors
+        api = self.getApiConnection(location)
+        machines_actor = api.getActor('cloudapi', 'machines')
+
+        # start machine
+        machine_id = [machine['id'] for machine in machines_actor.list() if machine['name'] == name]
+        if not machine_id:
+            raise
+        machine_id = machine_id[0]
+        machine = machines_actor.start(machine_id)
+        return True
+
+    def stopMachine(self, location, name):
+        # get actors
+        api = self.getApiConnection(location)
+        machines_actor = api.getActor('cloudapi', 'machines')
+
+        # stop machine
+        machine_id = [machine['id'] for machine in machines_actor.list() if machine['name'] == name]
+        if not machine_id:
+            raise
+        machine_id = machine_id[0]
+        machine = machines_actor.stop(machine_id)
+        return True
+
+    def snapshotMachine(self, location, name, ssname):
+        # get actors
+        api = self.getApiConnection(location)
+        machines_actor = api.getActor('cloudapi', 'machines')
+
+        # take a snapshot of machine
+        machine_id = [machine['id'] for machine in machines_actor.list() if machine['name'] == name]
+        if not machine_id:
+            raise
+        machine_id = machine_id[0]
+        machine = machines_actor.snapshot(machine_id, ssname)
+        return True

@@ -28,9 +28,6 @@ machine (m)
 -- name (n)
 -- snapshotname (sname)
 
-- delete
--- name (n)
-
 - tcpportforward
 -- name (n)
 -- machinetcpport
@@ -83,7 +80,22 @@ class MS1RobotFactory(object):
 
 class MS1RobotCmds():
     def __init__(self):
-        pass
+        self.location = j.tools.ms1.validateSpaceSecrert(spacesecret='')
 
-    def machine_create(self, name, description='', memsize=1024, ssdsize=40, vsansize=0):
-        j.tools.ms1.deployMachineDeck()
+    def machine__create(self, **args):
+        j.tools.ms1.deployMachineDeck(self.location, **args)
+
+    def machine__list(self):
+        j.tools.ms1.listMachinesInSpace(self.location)
+
+    def machine__delete(self, **args):
+        j.tools.ms1.deleteMachine(self.location, **args)
+
+    def machine__start(self, **args):
+        j.tools.ms1.startMachine(self.location, **args)
+
+    def machine__stop(self, **args):
+        j.tools.ms1.stopMachine(self.location, **args)
+
+    def machine__snapshot(self, **args):
+        j.tools.ms1.snapshotMachine(self.location, **args)
