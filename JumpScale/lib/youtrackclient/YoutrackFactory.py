@@ -32,10 +32,11 @@ story (issue,bug)
 
 - delete (d,del)
 -- id
+-- name (n)
 
 - comment
 -- id
--- name #specify name or id
+-- name (n) #specify name or id
 -- comment
 
 #####
@@ -200,10 +201,65 @@ class YouTrackRobotCmds():
 
         return result
 
-    def story_comment(self,**args):
+    def story__comment(self,**args):
         client=self.getClient(args)
-        client.executeCommand(args["id"],"comment",args["comment"])
+        done=""
+        c=args["comment"].replace("\\n","\n")
+        for story in self._storiesGet(args):            
+            client.executeCommand(story.id,"comment",c)
+            done+="%s,"%story.id
+        return "COMMENT:%s"%done
 
+    def story__delete(self,**args):
+        client=self.getClient(args)
+        done=""
+        for story in self._storiesGet(args):
+            client.deleteIssue(story.id) 
+            done+="%s,"%story.id
+
+        return "DELETED:%s"%done
+
+    def _storiesGet(self,args):
+        client=self.getClient(args)
+
+        proj=self._getProject(args["project"])
+        if proj==None:
+            return "Could not find project:'%s'"%args["project"]
+
+        stories=[]
+
+        if args.has_key("id"):
+            if args["id"].find(",")==-1:
+                ids=[args["id"]]
+            else:
+                ids=args["id"].split(",")
+
+            for idd in ids:
+                idd=str(idd)
+                if idd.find("-")<>-1:
+                    idd=args["id"]
+                else:
+                    idd="%s-%s"%(proj["id"],idd)
+                try:
+                    story=client.getIssue(idd)
+                except Exception,e:
+                    if str(e).find("404: Not Found")==-1:
+                        raise RuntimeError(str(e))
+                    continue
+                stories.append(story)
+            return stories
+
+        if args.has_key("name"):
+            issues=client.getIssues(proj["id"],"summary: \"%s\""%args["name"],0,100)
+            return issues
+
+        if args.has_key("filter"):
+            issues=client.getIssues(proj["id"],args["filter"],0,100)
+            return issues
+
+        return []
+
+   
     def story__create(self,**args):
         client=self.getClient(args)
         
@@ -211,10 +267,9 @@ class YouTrackRobotCmds():
         if proj==None:
             return "Could not find project:'%s'"%args["project"]
 
-        self.story__list(filter="summary: atest",**args)
+        issues=client.getIssues(proj["id"],"summary: \"%s\""%args["name"],0,100)
 
-        issues=client.getIssues(proj["id"],"summary: %s"%args["name"],0,100)
-        
+
         if len(issues)>1:
             return self.txtrobot.error("Found more than 1 story with samen name:%s"%args["name"])
         elif len(issues)==1:
@@ -301,6 +356,11 @@ class YouTrackRobotCmds():
                 args["descr"]= ""
             
             result=client.createIssue(project=args["project"],assignee=who,summary=args["name"],description=args["descr"],priority=args["prio"])
+
+            if args.has_key("comment"):
+                idd=result.split("/")[-1]
+                client.executeCommand(idd,"comment", args["comment"])
+
 
         return result        
 
