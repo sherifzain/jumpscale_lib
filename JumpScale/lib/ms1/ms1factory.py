@@ -78,6 +78,9 @@ class MS1RobotFactory(object):
 
 class MS1RobotCmds():
 
+    def __init__(self):
+        self.location = j.tools.ms1.validateSpaceSecrert(None)
+
     def getLoginPasswd(self, **args):
         if not args.has_key("login") or not args.has_key("passwd"):
             self.txtrobot.error("could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
@@ -88,6 +91,20 @@ class MS1RobotCmds():
         j.tools.ms1.getSecret(login, password, True)
         args.pop('login')
         args.pop('passwd')
-        location = j.tools.ms1.validateSpaceSecrert(None)
-        machine_id = j.tools.ms1.deployMachineDeck(location, **args)
+        machine_id = j.tools.ms1.deployMachineDeck(self.location, **args)
         return 'Machine created successfully. Machine ID: %s' % machine_id
+
+    def machine__list(self):
+        j.tools.ms1.listMachinesInSpace(self.location)
+
+    def machine__delete(self, **args):
+        j.tools.ms1.deleteMachine(self.location, **args)
+
+    def machine__start(self, **args):
+        j.tools.ms1.startMachine(self.location, **args)
+
+    def machine__stop(self, **args):
+        j.tools.ms1.stopMachine(self.location, **args)
+
+    def machine__snapshot(self, **args):
+        j.tools.ms1.snapshotMachine(self.location, **args)
