@@ -23,12 +23,18 @@ story (issue,bug)
 -- filter (f) #is filter like used in youtrack
 -- verbose (v) #1-3 3 being most verbose
 
+- get
+-- id
+-- name (n)
+-- project (p)
+
 - create (c,n,new,update,u)
 -- name
 -- project
 -- who #name of person who will do it
 -- prio #0-4,4 being highest, see below
 -- descr (description,d)
+-- parent #specify part of name or id of task which we are subtask for
 
 - delete (d,del)
 -- id
@@ -36,8 +42,21 @@ story (issue,bug)
 
 - comment
 -- id
--- name (n) #specify name or id
+-- name (n) #specify name or part of name
 -- comment
+-- created
+-- author
+
+- depend
+-- id
+-- name (n) #speciy name or part of name
+-- on #depend on 
+
+- subtask
+-- id
+-- name (n) #speciy name or part of name
+-- parent #parent of this task
+
 
 #####
 priorities:
@@ -88,7 +107,7 @@ class YouTrackRobotCmds():
         dd.pop("youtrack")
         return json.dumps(dd)        
 
-    def _projNameToId(self,name):
+    def _prioNameToId(self,name):
         mmap={"show-stopper":4,"critical":3,"major":2,"normal":1,"minor":0}
         return mmap[name.lower()]
 
@@ -215,9 +234,43 @@ class YouTrackRobotCmds():
         done=""
         for story in self._storiesGet(args):
             client.deleteIssue(story.id) 
-            done+="%s,"%story.id
+            done+="%s,"%story.id            
 
         return "DELETED:%s"%done
+
+    def story__depend(self,**args):
+        client=self.getClient(args)
+        done=""
+        for story in self._storiesGet(args):
+            #find deps
+            args2=copy.copy(args)
+            if args2.has_key("id"):
+                args2.pop("id")
+            args2["name"]=args["on"]
+            deps=self._storiesGet(args2)
+            for dep in deps:
+                client.executeCommand(story.id,"depends on %s"%dep.id)            
+                done+="%s,"%story.id            
+
+        return "DEPEND done"
+
+    def story__subtask(self,**args):
+        client=self.getClient(args)
+        done=""
+        for story in self._storiesGet(args):
+            #find deps
+            args2=copy.copy(args)
+            if args2.has_key("id"):
+                args2.pop("id")
+            args2["name"]=args["parent"]
+            parent=self._storiesGet(args2)
+            if len(parent)>1:
+                return "**ERROR**: CANNOT LINK TO MORE THAN 1 PARENT."
+            parent=parent[0]
+            client.executeCommand(story.id,"subtask of %s"%parent.id)            
+            done+="%s,"%story.id            
+
+        return "DEPEND done"
 
     def _storiesGet(self,args):
         client=self.getClient(args)
@@ -257,9 +310,51 @@ class YouTrackRobotCmds():
             issues=client.getIssues(proj["id"],args["filter"],0,100)
             return issues
 
-        return []
+        return client.getIssues(proj["id"],"",0,100)
 
-   
+    def story__get(self,**args):
+        if args.has_key("filter"):
+            if args["filter"]=="open":
+                args["filter"]="State: -Fixed -{Won't fix} -{Verified}"
+        
+        client=self.getClient(args)
+        out="\n"
+        for story in self._storiesGet(args):
+            parent=""
+            out+="##########################################################################\n"
+            out+="!issue.update\n"
+            links=story.getLinks()
+            
+            if len(links)>0:
+                for link in links:
+                    if link.target==story.id:
+                        if link.typeName=="Subtask":
+                            parent=link.source
+                
+            prio=self._prioNameToId(story.Priority)
+            out+="id=%s\n"%story.id
+            out+="name=%s\n"%story.summary
+            if story.__dict__.has_key('Assignee'):
+                out+="who=%s\n"%story.Assignee
+            out+="state=%s\n"%story.State              
+            if story.__dict__.has_key('description'):
+                out+="descr=...\n%s\n...\n"%story.description.strip()
+            out+="prio=%s\n"%prio
+            out+="parent=%s\n"%parent
+            # out+="created=%s #%s\n"%(story.created,j.base.time.epoch2HRDateTime(story.created))
+            out+="\n"
+            if int(story.commentsCount)>0:                
+                out+="prio=%s\n"%prio
+                for comment in story.getComments():
+                    out+="!issue.comment\n"
+                    out+="id=%s\n"%story.id
+                    out+="comment=...\n%s\n...\n"%comment.text.strip()
+                    # out+="created=%s #%s\n"%(comment.created,j.base.time.epoch2HRDateTime(comment.created))
+                    out+="author=%s\n"%comment.author
+                out+="\n"
+        return out
+        
+
     def story__create(self,**args):
         client=self.getClient(args)
         
@@ -268,7 +363,6 @@ class YouTrackRobotCmds():
             return "Could not find project:'%s'"%args["project"]
 
         issues=client.getIssues(proj["id"],"summary: \"%s\""%args["name"],0,100)
-
 
         if len(issues)>1:
             return self.txtrobot.error("Found more than 1 story with samen name:%s"%args["name"])
@@ -279,7 +373,7 @@ class YouTrackRobotCmds():
                 return self.txtrobot.error("Cannot update the story, there are attachments, not supported")
 
             if not args.has_key("prio"):
-                args["prio"]= self._projNameToId(issue.Priority)
+                args["prio"]= self._prioNameToId(issue.Priority)
             else:
                 args["prio"]= int(args["prio"])
 
@@ -330,11 +424,13 @@ class YouTrackRobotCmds():
 
             client.deleteIssue(issue.id)
 
-            result =client.importIssues("OPS","Developers",[data])
+            result =client.importIssues(proj["id"],"Developers",[data])
             client.importLinks(links)
 
             for comment in comments:
                 client.executeCommand(issue.id,"comment",comment.text)
+
+            idd=issue.id
 
         else:
             if not args.has_key("prio"):
@@ -357,23 +453,21 @@ class YouTrackRobotCmds():
             
             result=client.createIssue(project=args["project"],assignee=who,summary=args["name"],description=args["descr"],priority=args["prio"])
 
-            if args.has_key("comment"):
-                idd=result.split("/")[-1]
+            idd=result.split("/")[-1]
+
+            if args.has_key("comment"):            
                 client.executeCommand(idd,"comment", args["comment"])
 
+        if args.has_key("parent"):            
+            args2=copy.copy(args)
+            if args2.has_key("id"):
+                args2.pop("id")
+            args2["name"]=args["parent"]            
+            parent=self._storiesGet(args2)
+            if len(parent)>1:
+                return "**ERROR**: CANNOT LINK TO MORE THAN 1 PARENT."
+            parent=parent[0]
+            client.executeCommand(idd,"subtask of %s"%parent.id)            
 
         return result        
-
-# class YoutrackConnection(object):
-
-#     def __init__(self, url, login,password):
-#         """
-#         @param url example http://incubaid.myjetbrains.com/youtrack/
-#         """
-#         yt = 
-#         from IPython import embed
-#         print "DEBUG NOW opopopo"
-#         embed()
-        
-#         # print yt.createIssue('SB', 'resttest', 'test', 'test', '1', 'Bug', 'Unknown', 'Open', '', '', '')
 
