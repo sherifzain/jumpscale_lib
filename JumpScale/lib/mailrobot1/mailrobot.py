@@ -31,7 +31,7 @@ class MailRobot(SMTPServer):
     def green_message(self, peer, mailfrom, rcpttos, data):
         mailserver = j.application.config.get('mailrobot.mailserver')
         msg = self.emailparser.parsestr(data)
-        if mailserver != msg['To'].split('@')[1]:
+        if mailserver not in msg['To'].split('@')[1]:
             print 'Received a message which is not going to be processed. Mail server does not match'
             return
         mailfrom = msg['From']
@@ -51,9 +51,14 @@ class MailRobot(SMTPServer):
 
             print "Processing message from %s"  % msg['From']
             output = ''
-            if msg['To'].split('@')[0] == 'youtrack':
+            robot_processor = msg['To'].split('@')[0]
+            if robot_processor == 'youtrack':
                 import JumpScale.lib.youtrackclient
                 robot = j.tools.youtrack.getRobot("http://incubaid.myjetbrains.com/youtrack/")
+                output = robot.process(commands_str)
+            elif robot_processor == 'machine':
+                import JumpScale.lib.ms1
+                robot = j.tools.ms1robot.getRobot()
                 output = robot.process(commands_str)
             
             output = output or 'A generic error has occured. Please try again later'

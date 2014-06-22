@@ -12,8 +12,6 @@ machine (m)
 -- description (descr)
 -- memsize  #size is 0.5,1,2,4,8,16 in GB
 -- ssdsize  #10,20,30,40,100 in GB
--- type     #type:arch,fedora,ubuntu,centos,opensuse,zentyal,debian,ubuntu13.10,ubuntu14.04,w2012_std,w2012_ess
--- typeid   #id type id used, type cannot be used
 
 - delete (del)
 -- name (n)
@@ -27,6 +25,9 @@ machine (m)
 - snapshot
 -- name (n)
 -- snapshotname (sname)
+
+- delete
+-- name (n)
 
 - tcpportforward
 -- name (n)
@@ -69,9 +70,6 @@ spacesecret=
 
 class MS1RobotFactory(object):
 
-    def get(self, login, password):
-        j.tools.ms1.getSecret(login, password, True)
-
     def getRobot(self):
         robot = j.tools.txtrobot.get(robotdefinition)
         cmds = MS1RobotCmds()
@@ -79,23 +77,15 @@ class MS1RobotFactory(object):
         return robot
 
 class MS1RobotCmds():
-    def __init__(self):
-        self.location = j.tools.ms1.validateSpaceSecrert(spacesecret='')
 
-    def machine__create(self, **args):
-        j.tools.ms1.deployMachineDeck(self.location, **args)
+    def getLoginPasswd(self, **args):
+        if not args.has_key("login") or not args.has_key("passwd"):
+            self.txtrobot.error("could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
+        return args["login"],args["passwd"]
 
-    def machine__list(self):
-        j.tools.ms1.listMachinesInSpace(self.location)
-
-    def machine__delete(self, **args):
-        j.tools.ms1.deleteMachine(self.location, **args)
-
-    def machine__start(self, **args):
-        j.tools.ms1.startMachine(self.location, **args)
-
-    def machine__stop(self, **args):
-        j.tools.ms1.stopMachine(self.location, **args)
-
-    def machine__snapshot(self, **args):
-        j.tools.ms1.snapshotMachine(self.location, **args)
+    def machine__new(self, **args):
+        login, password = self.getLoginPasswd(**args)
+        j.tools.ms1.getSecret(login, password, True)
+        location = j.tools.ms1.validateSpaceSecrert(None)
+        machine_id = j.tools.ms1.deployMachineDeck(location, **args)
+        return 'Machine created successfully. Machine ID: %s' % machine_id
