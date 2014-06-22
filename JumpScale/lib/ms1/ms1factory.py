@@ -98,13 +98,21 @@ class MS1RobotCmds():
         j.tools.ms1.listMachinesInSpace(self.location)
 
     def machine__delete(self, **args):
+        args.pop('login')
+        args.pop('passwd')
         j.tools.ms1.deleteMachine(self.location, **args)
 
     def machine__start(self, **args):
+        args.pop('login')
+        args.pop('passwd')
         j.tools.ms1.startMachine(self.location, **args)
 
     def machine__stop(self, **args):
+        args.pop('login')
+        args.pop('passwd')
         j.tools.ms1.stopMachine(self.location, **args)
 
     def machine__snapshot(self, **args):
+        args.pop('login')
+        args.pop('passwd')
         j.tools.ms1.snapshotMachine(self.location, **args)
