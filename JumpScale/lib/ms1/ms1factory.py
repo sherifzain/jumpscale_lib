@@ -86,6 +86,8 @@ class MS1RobotCmds():
     def machine__new(self, **args):
         login, password = self.getLoginPasswd(**args)
         j.tools.ms1.getSecret(login, password, True)
+        args.pop('login')
+        args.pop('passwd')
         location = j.tools.ms1.validateSpaceSecrert(None)
         machine_id = j.tools.ms1.deployMachineDeck(location, **args)
         return 'Machine created successfully. Machine ID: %s' % machine_id

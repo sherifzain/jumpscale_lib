@@ -107,11 +107,11 @@ class MS1(object):
         image_ids = [image['id'] for image in images_actor.list() if image['name'] == self.IMAGE_NAME]
         if not image_ids:
             raise RuntimeError('Could not find a matching image')
-        size_ids = [size['id'] for size in sizes_actor.list() if size['memory'] == memsize]
+        size_ids = [size['id'] for size in sizes_actor.list() if size['memory'] == int(memsize)]
         if not size_ids:
             raise RuntimeError('Could not find a matching size')
         # create machine
-        machine_id = machines_actor.create(cloudspaceId=cloudspace_ids[0], name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=ssdsize)
+        machine_id = machines_actor.create(cloudspaceId=cloudspace_ids[0], name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=int(ssdsize))
         return machine_id
 
     def listMachinesInSpace(self, location):
