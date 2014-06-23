@@ -153,15 +153,16 @@ class MS1(object):
         machines_actor.stop(machine_id)
         return True
 
-    def snapshotMachine(self, location, name, ssname):
+    def snapshotMachine(self, spacesecret, name, snapshotname):
         # get actors
-        api = self.getApiConnection(location)
+        api = self.getApiConnection(spacesecret)
         machines_actor = api.getActor('cloudapi', 'machines')
+        cloudspace_id = self.getCloudspaceId(spacesecret)
 
         # take a snapshot of machine
-        machine_id = [machine['id'] for machine in machines_actor.list() if machine['name'] == name]
+        machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise
+            raise RuntimeError('Machine %s does not exist' % name)
         machine_id = machine_id[0]
-        machine = machines_actor.snapshot(machine_id, ssname)
+        machines_actor.snapshot(machine_id, snapshotname)
         return True

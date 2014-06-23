@@ -103,9 +103,8 @@ class MS1RobotCmds():
         else:
             return 'There was a problem stopping machine %s' % args['name']
 
-    # def machine__snapshot(self, **args):
-    #     login, password = self.getLoginPasswd(**args)
-    #     j.tools.ms1.getSecret(login, password, True)
-    #     args.pop('login')
-    #     args.pop('passwd')
-    #     j.tools.ms1.snapshotMachine(self.location, **args)
+    def machine__snapshot(self, **args):
+        if j.tools.ms1.snapshotMachine(**args):
+            return 'Snapshot %s was created successfully' % args['snapshotname']
+        else:
+            return 'There was a problem creating snapshot %s' % args['snapshotname']
