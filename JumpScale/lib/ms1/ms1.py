@@ -122,7 +122,7 @@ class MS1(object):
 
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise RuntimeError('Machine %s does not exist' % name)
+            return False
         machine_id = machine_id[0]
         machines_actor.delete(machine_id)
         return True
@@ -135,7 +135,7 @@ class MS1(object):
 
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise RuntimeError('Machine %s does not exist' % name)
+            return False
         machine_id = machine_id[0]
         machines_actor.start(machine_id)
         return True
@@ -148,7 +148,7 @@ class MS1(object):
 
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise RuntimeError('Machine %s does not exist' % name)
+            return False
         machine_id = machine_id[0]
         machines_actor.stop(machine_id)
         return True
@@ -162,7 +162,7 @@ class MS1(object):
         # take a snapshot of machine
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise RuntimeError('Machine %s does not exist' % name)
+            return False
         machine_id = machine_id[0]
         machines_actor.snapshot(machine_id, snapshotname)
         return True
@@ -180,7 +180,7 @@ class MS1(object):
         cloudspace_id = self.getCloudspaceId(spacesecret)
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise RuntimeError('Machine %s does not exist' % name)
+            return False
         machine_id = machine_id[0]
         portforwarding_actor.create(cloudspace_id, pubip, pubipport, machine_id, machineport, protocol)
         return True
@@ -193,13 +193,13 @@ class MS1(object):
         cloudspace_id = self.getCloudspaceId(spacesecret)
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise RuntimeError('Machine %s does not exist' % name)
+            return 'Machine %s does not exist' % name
         machine = machines_actor.get(machine_id[0])
         if machine['cloudspaceid'] != cloudspace_id:
-            raise RuntimeError('Machine %s does not belong to cloudspace whose secret is given' % name)
+            return 'Machine %s does not belong to cloudspace whose secret is given' % name
         cloudspace = cloudspaces_actor.get(cloudspace_id)
         if not j.system.net.waitConnectionTest(cloudspace['publicipaddress'], int(sshport), 5):
-            raise RuntimeError("Failed to connect to %s %s" % (cloudspace['publicipaddress'], sshport))
+            return "Failed to connect to %s %s" % (cloudspace['publicipaddress'], sshport)
 
         ssh_connection = j.remote.cuisine.api
         username, password = machine['accounts'][0]['login'], machine['accounts'][0]['password']
