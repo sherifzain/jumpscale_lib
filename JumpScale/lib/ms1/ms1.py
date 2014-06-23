@@ -114,18 +114,17 @@ class MS1(object):
         machines = machines_actor.list(cloudspaceId=cloudspace_id)
         return machines
 
-    def deleteMachine(self, location, name):
+    def deleteMachine(self, spacesecret, name):
         # get actors
-        api = self.getApiConnection(location)
+        api = self.getApiConnection(spacesecret)
         machines_actor = api.getActor('cloudapi', 'machines')
+        cloudspace_id = self.getCloudspaceId(spacesecret)
 
-        # delete machine
-        machine_id = [machine['id'] for machine in machines_actor.list() if machine['name'] == name]
+        machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
         if not machine_id:
-            raise
+            raise RuntimeError('Machine %s does not exist' % name)
         machine_id = machine_id[0]
-
-        machine = machines_actor.delete(machine_id)
+        machines_actor.delete(machine_id)
         return True
 
     def startMachine(self, location, name):

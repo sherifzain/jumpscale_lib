@@ -85,12 +85,11 @@ class MS1RobotCmds():
     def machine__list(self, **args):
         return j.tools.ms1.listMachinesInSpace(**args)
 
-    # def machine__delete(self, **args):
-    #     login, password = self.getLoginPasswd(**args)
-    #     j.tools.ms1.getSecret(login, password, True)
-    #     args.pop('login')
-    #     args.pop('passwd')
-    #     j.tools.ms1.deleteMachine(self.location, **args)
+    def machine__delete(self, **args):
+        if j.tools.ms1.deleteMachine(**args):
+            return 'Machine %s was deleted successfully' % args['name']
+        else:
+            return 'There was a problem deleting machine %s' % args['name']
 
     # def machine__start(self, **args):
     #     login, password = self.getLoginPasswd(**args)
