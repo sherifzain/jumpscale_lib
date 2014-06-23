@@ -60,8 +60,9 @@ class MailRobot(SMTPServer):
                 import JumpScale.lib.ms1
                 robot = j.tools.ms1robot.getRobot()
                 output = robot.process(commands_str)
+            else:
+                output = 'Could not match any robot. Please make sure you are sending to the right one.'
             
-            output = output or 'Could not match any robot. Please make sure you are sending to the right one.'
             j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', msg.get('subject'), output)
         except:
             j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', msg.get('subject'), 'A generic error has occured. Please try again later')
