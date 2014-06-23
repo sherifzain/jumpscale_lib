@@ -3,39 +3,31 @@ import time
 from JumpScale import j
 import JumpScale.portal
 import JumpScale.baselib.remote
+import JumpScale.baselib.redis
 
 class MS1(object):
 
     def __init__(self):
         self.secret = ''
         self.IMAGE_NAME = 'Ubuntu 14.04 (JumpScale)'
+        self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', j.application.config.get('redis.port.redisp'))
 
-    def getSecret(self, login, password, remember=False):
-        params = {'username': login, 'password': password, 'authkey': ''}
-        request = requests.post('https://www.mothership1.com/restmachine/cloudapi/users/authenticate', params)
-        if request.status_code == 200:
-            self.secret = request.json()
-            if remember:
-                self.rememberSecret()
-        else:
-            raise RuntimeError('Invalid username and/or password')
+    def getCloudspaceId(self, space_secret):
+        if not self.redis_cl.hexists('cloudspaces:secrets', space_secret):
+            raise RuntimeError('Space secret does not exist')
+        return int(self.redis_cl.hget('cloudspaces:secrets', space_secret))
 
-    def validateSpaceSecrert(self, space_secret):
-        # TODO: search spaces objects, get space with the given space secret, raise if it doesn't exist, else return space location
-        return 'ca1'
+    def getCloudspaceLocation(self, space_secret):
+        cloudspace_id = self.getCloudspaceId(space_secret)
+        portal_client = j.core.portal.getClient('www.mothership1.com', 443, space_secret)
+        cloudspaces_actor = portal_client.getActor('cloudapi', 'cloudspaces')
+        cloudspace = cloudspaces_actor.get(cloudspace_id)
+        return cloudspace['location']
 
-    def setSecret(self, secret, remember=False):
-        self.secret = secret
-        if remember:
-            self.rememberSecret()
-
-    def rememberSecret(self):
-        hrd_path = j.system.fs.joinPaths(j.dirs.hrdDir, 'ms1.hrd')
-        j.system.fs.writeFile(hrd_path, 'ms1.secret=%s' % self.secret)
-
-    def getApiConnection(self, location):
+    def getApiConnection(self, space_secret):
+        location = self.getCloudspaceLocation(space_secret)
         host = 'www.mothership1.com' if location == 'ca1' else '%s.mothership1.com' % location
-        return j.core.portal.getClient(host, 443, self.secret)
+        return j.core.portal.getClient(host, 443, space_secret)
 
     def deployAppDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='solutions', jpname=None, config=None, description=None):
         machine_id = self.deployMachineDeck(location, name, memsize, ssdsize, vsansize, description)
@@ -92,18 +84,16 @@ class MS1(object):
                     portforwarding_actor.create(machine['cloudspaceid'], cloudspace['publicipaddress'], str(port), machine['id'], str(port))
         return {'publicip': cloudspace['publicipaddress']}
 
-    def deployMachineDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, description=''):
+    def deployMachineDeck(self, spacesecret, name, memsize=1024, ssdsize=40, vsansize=0, description=''):
         # get actors
-        api = self.getApiConnection(location)
+        api = self.getApiConnection(spacesecret)
         cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
         images_actor = api.getActor('cloudapi', 'images')
         machines_actor = api.getActor('cloudapi', 'machines')
         sizes_actor = api.getActor('cloudapi', 'sizes')
 
         # validate args
-        cloudspace_ids = [cs['id'] for cs in cloudspaces_actor.list() if cs['location'] == location]
-        if not cloudspace_ids:
-            raise RuntimeError('Could not find a matching cloudspace')
+        cloudspace_id = self.getCloudspaceId(spacesecret)
         image_ids = [image['id'] for image in images_actor.list() if image['name'] == self.IMAGE_NAME]
         if not image_ids:
             raise RuntimeError('Could not find a matching image')
@@ -111,7 +101,7 @@ class MS1(object):
         if not size_ids:
             raise RuntimeError('Could not find a matching size')
         # create machine
-        machine_id = machines_actor.create(cloudspaceId=cloudspace_ids[0], name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=int(ssdsize))
+        machine_id = machines_actor.create(cloudspaceId=cloudspace_id, name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=int(ssdsize))
         return machine_id
 
     def listMachinesInSpace(self, location):
