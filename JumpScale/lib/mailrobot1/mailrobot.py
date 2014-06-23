@@ -52,11 +52,11 @@ class MailRobot(SMTPServer):
             print "Processing message from %s"  % msg['From']
             output = ''
             robot_processor = msg['To'].split('@')[0]
-            if robot_processor == 'youtrack':
+            if 'youtrack' in robot_processor:
                 import JumpScale.lib.youtrackclient
                 robot = j.tools.youtrack.getRobot("http://incubaid.myjetbrains.com/youtrack/")
                 output = robot.process(commands_str)
-            elif robot_processor == 'machine':
+            elif 'machine' in robot_processor:
                 import JumpScale.lib.ms1
                 robot = j.tools.ms1robot.getRobot()
                 output = robot.process(commands_str)
