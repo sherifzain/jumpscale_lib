@@ -10,7 +10,7 @@ class MS1(object):
     def __init__(self):
         self.secret = ''
         self.IMAGE_NAME = 'Ubuntu 14.04 (JumpScale)'
-        self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', j.application.config.get('redis.port.redisp'))
+        self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', int(j.application.config.get('redis.port.redisp')))
 
     def getCloudspaceId(self, space_secret):
         if not self.redis_cl.hexists('cloudspaces:secrets', space_secret):
