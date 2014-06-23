@@ -206,4 +206,4 @@ class MS1(object):
         ssh_connection.fabric.api.env['password'] = password
         ssh_connection.fabric.api.env['connection_attempts'] = 5
         ssh_connection.connect('%s:%s' % (cloudspace['publicipaddress'], sshport), username)
-        return ssh_connection.run(script)
+        return ssh_connection.sudo(script)
