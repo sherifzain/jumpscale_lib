@@ -206,4 +206,6 @@ class MS1(object):
         ssh_connection.fabric.api.env['password'] = password
         ssh_connection.fabric.api.env['connection_attempts'] = 5
         ssh_connection.connect('%s:%s' % (cloudspace['publicipaddress'], sshport), username)
+        if not j.system.net.waitConnectionTest(cloudspace['publicipaddress'], int(sshport), 60):
+            return "Failed to connect to %s %s" % (cloudspace['publicipaddress'], ssh_port)
         return ssh_connection.sudo(script)
