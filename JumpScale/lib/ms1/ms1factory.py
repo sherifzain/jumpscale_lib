@@ -40,6 +40,7 @@ machine (m)
 
 - execssh
 -- name (n)
+-- sshport
 -- script #predefined vars: $passwd,$ipaddr,$name
 
 - setpasswd
@@ -119,4 +120,4 @@ class MS1RobotCmds():
             return 'There was a problem creating port-forwarding rule'
 
     def machine__execssh(self, **args):
-        pass
+        return j.tools.ms1.execSshScript(**args)
