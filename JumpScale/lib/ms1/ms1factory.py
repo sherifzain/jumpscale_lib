@@ -79,19 +79,24 @@ class MS1RobotFactory(object):
 class MS1RobotCmds():
 
     def __init__(self):
-        self.location = j.tools.ms1.validateSpaceSecrert(None)
+        pass
 
-    def getLoginPasswd(self, **args):
-        if not args.has_key("login") or not args.has_key("passwd"):
-            self.txtrobot.error("could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
-        return args["login"],args["passwd"]
+    # def getLoginPasswd(self, **args):
+    #     if 'login' not in args or 'passwd' not in args:
+    #         self.txtrobot.error("Could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
+    #     return args['login'], args['passwd']
+
+    def getSpaceSecret(self, **args):
+        if 'spacesecret' not in args:
+            self.txtrobot.error('Could not find spacesecret. Please specify one in the email you sent')
+        return args['spacesecret']
 
     def machine__new(self, **args):
-        login, password = self.getLoginPasswd(**args)
-        j.tools.ms1.getSecret(login, password, True)
-        args.pop('login')
-        args.pop('passwd')
-        machine_id = j.tools.ms1.deployMachineDeck(self.location, **args)
+        spacesecret = self.getSpaceSecret(**args)
+        location = j.tools.ms1.validateSpaceSecrert(spacesecret)
+        j.tools.ms1.setSecret(spacesecret, True)
+        args.pop('spacesecret')
+        machine_id = j.tools.ms1.deployMachineDeck(location, **args)
         return 'Machine created successfully. Machine ID: %s' % machine_id
 
     def machine__list(self):
