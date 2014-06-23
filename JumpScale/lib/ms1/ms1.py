@@ -21,7 +21,7 @@ class MS1(object):
         cloudspace_id = self.getCloudspaceId(space_secret)
         portal_client = j.core.portal.getClient('www.mothership1.com', 443, space_secret)
         cloudspaces_actor = portal_client.getActor('cloudapi', 'cloudspaces')
-        cloudspace = cloudspaces_actor.get(cloudspace_id)
+        cloudspace = [cs for cs in cloudspaces_actor.list() if cs['id'] == cloudspace_id][0] # TODO use get instead of list
         return cloudspace['location']
 
     def getApiConnection(self, space_secret):
