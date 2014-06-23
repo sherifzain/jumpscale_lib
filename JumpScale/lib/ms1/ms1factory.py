@@ -91,19 +91,17 @@ class MS1RobotCmds():
         else:
             return 'There was a problem deleting machine %s' % args['name']
 
-    # def machine__start(self, **args):
-    #     login, password = self.getLoginPasswd(**args)
-    #     j.tools.ms1.getSecret(login, password, True)
-    #     args.pop('login')
-    #     args.pop('passwd')
-    #     j.tools.ms1.startMachine(self.location, **args)
+    def machine__start(self, **args):
+        if j.tools.ms1.startMachine(**args):
+            return 'Machine %s was started successfully' % args['name']
+        else:
+            return 'There was a problem starting machine %s' % args['name']
 
-    # def machine__stop(self, **args):
-    #     login, password = self.getLoginPasswd(**args)
-    #     j.tools.ms1.getSecret(login, password, True)
-    #     args.pop('login')
-    #     args.pop('passwd')
-    #     j.tools.ms1.stopMachine(self.location, **args)
+    def machine__stop(self, **args):
+        if j.tools.ms1.stopMachine(**args):
+            return 'Machine %s was stopped successfully' % args['name']
+        else:
+            return 'There was a problem stopping machine %s' % args['name']
 
     # def machine__snapshot(self, **args):
     #     login, password = self.getLoginPasswd(**args)
