@@ -78,46 +78,46 @@ class MS1RobotCmds():
 
     def machine__new(self, **args):
         machine_id = j.tools.ms1.deployMachineDeck(**args)
-        return 'Machine created successfully. Machine ID: %s' % machine_id
+        return 'Machine created successfully. Machine ID: %s <br/><br/>' % machine_id
 
     def machine__list(self, **args):
-        return j.tools.ms1.listMachinesInSpace(**args)
+        return '%s <br/><br/>' % j.tools.ms1.listMachinesInSpace(**args)
 
     def machine__delete(self, **args):
         if j.tools.ms1.deleteMachine(**args):
-            return 'Machine %s was deleted successfully' % args['name']
+            return 'Machine %s was deleted successfully <br/><br/>' % args['name']
         else:
-            return 'There was a problem deleting machine %s' % args['name']
+            return 'There was a problem deleting machine %s <br/><br/>' % args['name']
 
     def machine__start(self, **args):
         if j.tools.ms1.startMachine(**args):
-            return 'Machine %s was started successfully' % args['name']
+            return 'Machine %s was started successfully <br/><br/>' % args['name']
         else:
-            return 'There was a problem starting machine %s' % args['name']
+            return 'There was a problem starting machine %s <br/><br/>' % args['name']
 
     def machine__stop(self, **args):
         if j.tools.ms1.stopMachine(**args):
-            return 'Machine %s was stopped successfully' % args['name']
+            return 'Machine %s was stopped successfully <br/><br/>' % args['name']
         else:
-            return 'There was a problem stopping machine %s' % args['name']
+            return 'There was a problem stopping machine %s <br/><br/>' % args['name']
 
     def machine__snapshot(self, **args):
         if j.tools.ms1.snapshotMachine(**args):
-            return 'Snapshot %s was created successfully' % args['snapshotname']
+            return 'Snapshot %s was created successfully <br/><br/>' % args['snapshotname']
         else:
-            return 'There was a problem creating snapshot %s' % args['snapshotname']
+            return 'There was a problem creating snapshot %s <br/><br/>' % args['snapshotname']
 
     def machine__tcpportforward(self, **args):
         if j.tools.ms1.createTcpPortForwardRule(**args):
-            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s' % (args['machinetcpport'], args['name'], args['pubip'], args['pubipport'])
+            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s <br/><br/>' % (args['machinetcpport'], args['name'], args['pubip'], args['pubipport'])
         else:
-            return 'There was a problem creating port-forwarding rule'
+            return 'There was a problem creating port-forwarding rule <br/><br/>'
 
     def machine__udpportforward(self, **args):
         if j.tools.ms1.createUdpPortForwardRule(**args):
-            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s' % (args['machineudpport'], args['name'], args['pubip'], args['pubipport'])
+            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s <br/><br/>' % (args['machineudpport'], args['name'], args['pubip'], args['pubipport'])
         else:
-            return 'There was a problem creating port-forwarding rule'
+            return 'There was a problem creating port-forwarding rule <br/><br/>'
 
     def machine__execssh(self, **args):
-        return j.tools.ms1.execSshScript(**args)
+        return '% <br/><br/>' % j.tools.ms1.execSshScript(**args)
