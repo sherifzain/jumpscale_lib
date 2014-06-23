@@ -120,4 +120,4 @@ class MS1RobotCmds():
             return 'There was a problem creating port-forwarding rule <br/><br/>'
 
     def machine__execssh(self, **args):
-        return '% <br/><br/>' % j.tools.ms1.execSshScript(**args)
+        return '%s <br/><br/>' % j.tools.ms1.execSshScript(**args)
