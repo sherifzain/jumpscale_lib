@@ -82,10 +82,8 @@ class MS1RobotCmds():
         machine_id = j.tools.ms1.deployMachineDeck(**args)
         return 'Machine created successfully. Machine ID: %s' % machine_id
 
-    # def machine__list(self, **args):
-    #     location = self._getLocation(**args)
-    #     args.pop('spacesecret')
-    #     j.tools.ms1.listMachinesInSpace(location, **args)
+    def machine__list(self, **args):
+        return j.tools.ms1.listMachinesInSpace(**args)
 
     # def machine__delete(self, **args):
     #     login, password = self.getLoginPasswd(**args)

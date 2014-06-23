@@ -29,8 +29,8 @@ class MS1(object):
         host = 'www.mothership1.com' if location == 'ca1' else '%s.mothership1.com' % location
         return j.core.portal.getClient(host, 443, space_secret)
 
-    def deployAppDeck(self, location, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='solutions', jpname=None, config=None, description=None):
-        machine_id = self.deployMachineDeck(location, name, memsize, ssdsize, vsansize, description)
+    def deployAppDeck(self, spacesecret, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='solutions', jpname=None, config=None, description=None):
+        machine_id = self.deployMachineDeck(spacesecret, name, memsize, ssdsize, vsansize, description)
         api = self.getApiConnection(location)
         portforwarding_actor = api.getActor('cloudapi', 'portforwarding')
         cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
@@ -104,17 +104,11 @@ class MS1(object):
         machine_id = machines_actor.create(cloudspaceId=cloudspace_id, name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=int(ssdsize))
         return machine_id
 
-    def listMachinesInSpace(self, location):
+    def listMachinesInSpace(self, spacesecret):
         # get actors
-        api = self.getApiConnection(location)
-        cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
+        api = self.getApiConnection(spacesecret)
         machines_actor = api.getActor('cloudapi', 'machines')
-
-        # get cloudspaceid
-        cloudspace_id = [cb['id'] for cb in cloudspaces_actor.list() if cb['location'] == location]
-        if not cloudspace_id:
-            raise
-        cloudspace_id = cloudspace_id[0]
+        cloudspace_id = self.getCloudspaceId(spacesecret)
 
         # list machines
         machines = machines_actor.list(cloudspaceId=cloudspace_id)
