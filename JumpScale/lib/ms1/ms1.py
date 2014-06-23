@@ -166,3 +166,21 @@ class MS1(object):
         machine_id = machine_id[0]
         machines_actor.snapshot(machine_id, snapshotname)
         return True
+
+    def createTcpPortForwardRule(self, spacesecret, name, machinetcpport, pubip, pubipport):
+        return self._createPortForwardRule(spacesecret, name, machinetcpport, pubip, pubipport, 'tcp')
+
+    def createUdpPortForwardRule(self, spacesecret, name, machineudpport, pubip, pubipport):
+        return self._createPortForwardRule(spacesecret, name, machineudpport, pubip, pubipport, 'udp')
+
+    def _createPortForwardRule(self, spacesecret, name, machineport, pubip, pubipport, protocol):
+        api = self.getApiConnection(spacesecret)
+        portforwarding_actor = api.getActor('cloudapi', 'portforwarding')
+        machines_actor = api.getActor('cloudapi', 'machines')
+        cloudspace_id = self.getCloudspaceId(spacesecret)
+        machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
+        if not machine_id:
+            raise RuntimeError('Machine %s does not exist' % name)
+        machine_id = machine_id[0]
+        portforwarding_actor.create(cloudspace_id, pubip, pubipport, machine_id, machineport, protocol)
+        return True

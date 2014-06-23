@@ -26,9 +26,6 @@ machine (m)
 -- name (n)
 -- snapshotname (sname)
 
-- delete
--- name (n)
-
 - tcpportforward
 -- name (n)
 -- machinetcpport
@@ -37,7 +34,7 @@ machine (m)
 
 - udpportforward
 -- name (n)
--- machinetcpport
+-- machineudpport
 -- pubip
 -- pubipport
 
@@ -108,3 +105,18 @@ class MS1RobotCmds():
             return 'Snapshot %s was created successfully' % args['snapshotname']
         else:
             return 'There was a problem creating snapshot %s' % args['snapshotname']
+
+    def machine__tcpportforward(self, **args):
+        if j.tools.ms1.createTcpPortForwardRule(**args):
+            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s' % (args['machineudpport'], args['name'], args['pubip'], args['pubipport'])
+        else:
+            return 'There was a problem creating port-forwarding rule'
+
+    def machine__udpportforward(self, **args):
+        if j.tools.ms1.createUdpPortForwardRule(**args):
+            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s' % (args['machineudpport'], args['name'], args['pubip'], args['pubipport'])
+        else:
+            return 'There was a problem creating port-forwarding rule'
+
+    def machine__execssh(self, **args):
+        pass
