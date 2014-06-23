@@ -108,7 +108,7 @@ class MS1RobotCmds():
 
     def machine__tcpportforward(self, **args):
         if j.tools.ms1.createTcpPortForwardRule(**args):
-            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s' % (args['machineudpport'], args['name'], args['pubip'], args['pubipport'])
+            return 'Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s' % (args['machinetcpport'], args['name'], args['pubip'], args['pubipport'])
         else:
             return 'There was a problem creating port-forwarding rule'
 
