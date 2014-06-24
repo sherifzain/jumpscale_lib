@@ -4,6 +4,13 @@ import JumpScale.lib.ms1
 import ujson as json
 
 robotdefinition="""
+mothership1 (ms1)
+- login
+-- login
+-- password
+-- cloudspace_name
+-- location
+
 machine (m)
 - list (l)
 
@@ -121,3 +128,10 @@ class MS1RobotCmds():
 
     def machine__execssh(self, **args):
         return j.tools.ms1.execSshScript(**args)
+
+    def mothership1__login(self, **args):
+        status, result = j.tools.ms1.setClouspaceSecret(**args)
+        if status:
+            return 'Your space secret is: %s' % result
+        else:
+            return result

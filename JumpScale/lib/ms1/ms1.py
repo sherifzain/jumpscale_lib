@@ -4,6 +4,7 @@ from JumpScale import j
 import JumpScale.portal
 import JumpScale.baselib.remote
 import JumpScale.baselib.redis
+import ujson as json
 
 class MS1(object):
 
@@ -14,8 +15,25 @@ class MS1(object):
 
     def getCloudspaceId(self, space_secret):
         if not self.redis_cl.hexists('cloudspaces:secrets', space_secret):
-            raise RuntimeError('Space secret does not exist')
+            return 'Space secret does not exist'
         return int(self.redis_cl.hget('cloudspaces:secrets', space_secret))
+
+    def setClouspaceSecret(self, login, password, cloudspace_name, location):
+        params = {'username': login, 'password': password, 'authkey': ''}
+        response = requests.post('https://www.mothership1.com/restmachine/cloudapi/users/authenticate', params)
+        if response.status_code != 200:
+            return False, 'Could not authenticate user %s' % login
+        auth_key = response.json()
+        params = {'authkey': auth_key}
+        response = requests.post('https://www.mothership1.com/restmachine/cloudapi/cloudspaces/list', params)
+        cloudspaces = response.json()
+        cloudspace = [cs for cs in cloudspaces if cs['name'] == cloudspace_name and cs['location'] == location]
+        if cloudspace:
+            cloudspace = cloudspace[0]
+        else:
+            return False, 'Could not find a matching cloud space with name %s and location %s' % (cloudspace_name, location)
+        self.redis_cl.hset('cloudspaces:secrets', auth_key, cloudspace['id'])
+        return True, auth_key
 
     def getCloudspaceLocation(self, space_secret):
         cloudspace_id = self.getCloudspaceId(space_secret)
