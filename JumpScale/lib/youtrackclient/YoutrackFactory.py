@@ -74,6 +74,7 @@ class YoutrackFactory(object):
         pass
         
     def get(self, url, login,password):
+        # print "connection get: %s '%s':'%s'"%(url,login,password)
         return Connection(url,login,password)
 
 
@@ -91,7 +92,7 @@ class YouTrackRobotCmds():
 
     def getLoginPasswd(self,args):
         if not args.has_key("login") or not args.has_key("passwd"):
-            self.txtrobot.error("could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
+            raise RuntimeError("could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
         return args["login"],args["passwd"]
 
     def getClient(self,args):
@@ -277,7 +278,7 @@ class YouTrackRobotCmds():
 
         proj=self._getProject(args["project"])
         if proj==None:
-            return "Could not find project:'%s'"%args["project"]
+            raise RuntimeError("Could not find project:'%s'"%args["project"])
 
         stories=[]
 
@@ -323,6 +324,7 @@ class YouTrackRobotCmds():
             parent=""
             out+="##########################################################################\n"
             out+="!issue.update\n"
+            
             links=story.getLinks()
             
             if len(links)>0:
