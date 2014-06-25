@@ -131,7 +131,4 @@ class MS1RobotCmds():
 
     def mothership1__login(self, **args):
         status, result = j.tools.ms1.setClouspaceSecret(**args)
-        if status:
-            return 'Your space secret is: %s' % result
-        else:
-            return result
+        return result
