@@ -9,6 +9,7 @@ from gsmtpd import SMTPServer
 from htmllib import HTMLParser
 from formatter import AbstractFormatter, DumbWriter
 from cStringIO import StringIO
+from .httprobot import HTTPRobot
 
 class MailRobot(SMTPServer):
 
@@ -71,3 +72,6 @@ class MailRobotFactory(object):
     def start(self):
         robot = MailRobot(('0.0.0.0', 25))
         robot.serve_forever()
+
+    def startHTTP(self, addr='0.0.0.0', port=8099):
+        HTTPRobot(addr=addr, port=port).start()
