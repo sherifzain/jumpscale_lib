@@ -11,6 +11,8 @@ from formatter import AbstractFormatter, DumbWriter
 from cStringIO import StringIO
 from .httprobot import HTTPRobot
 
+
+
 class MailRobot(SMTPServer):
 
     def __init__(self, *args, **kwargs):
@@ -18,6 +20,8 @@ class MailRobot(SMTPServer):
         self.acl = j.clients.agentcontroller.get()
         self.templatefolder = j.system.fs.joinPaths(j.dirs.baseDir, 'apps', 'mailrobot', 'templates')
         SMTPServer.__init__(self, *args, **kwargs)
+        self.domain=j.application.config.get("mailrobot.mailserver")
+        self.robots={}       
 
     def _html2text(self, html):
         output = StringIO()
@@ -53,25 +57,24 @@ class MailRobot(SMTPServer):
             print "Processing message from %s"  % msg['From']
             output = ''
             robot_processor = msg['To'].split('@')[0]
-            if 'youtrack' in robot_processor:
-                import JumpScale.lib.youtrackclient
-                robot = j.tools.youtrack.getRobot("http://incubaid.myjetbrains.com/youtrack/")
-                output = robot.process(commands_str)
-            elif 'machine' in robot_processor:
-                import JumpScale.lib.ms1
-                robot = j.tools.ms1robot.getRobot()
+            if self.robots.has_key(robot_processor):
+                robot=self.robots(robot_processor)
                 output = robot.process(commands_str)
             else:
-                output = 'Could not match any robot. Please make sure you are sending to the right one.'
+                output = 'Could not match any robot. Please make sure you are sending to the right one, \'youtrack\' & \'machine\' are supported.'
             
-            j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', msg.get('subject'), output)
-        except:
-            j.clients.email.send([mailfrom], 'mailrobot@mothership1.com', msg.get('subject'), 'A generic error has occured. Please try again later')
+            j.clients.email.send([mailfrom], "%s@%"%(robot_processor,self.domain), msg.get('subject'), output)
+        except Exception,e:
+            j.clients.email.send([mailfrom], "%s@%"%(robot_processor,self.domain), msg.get('subject'), 'A generic error has occured. Please try again later')
 
 class MailRobotFactory(object):
-    def start(self):
+    def startMailServer(self,robots={}):
         robot = MailRobot(('0.0.0.0', 25))
+        robot.robots=robots
+        print "start server on port:25"
         robot.serve_forever()
 
-    def startHTTP(self, addr='0.0.0.0', port=8099):
-        HTTPRobot(addr=addr, port=port).start()
+    def startHTTP(self, addr='0.0.0.0', port=8099,robots={}):
+        robot=HTTPRobot(addr=addr, port=port)
+        robot.robots=robots
+        robot.start()
