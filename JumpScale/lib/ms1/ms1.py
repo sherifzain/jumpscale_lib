@@ -18,7 +18,7 @@ class MS1(object):
             return 'Space secret does not exist'
         return int(self.redis_cl.hget('cloudspaces:secrets', space_secret))
 
-    def setClouspaceSecret(self, login, password, cloudspace_name, location):
+    def setClouspaceSecret(self, login, password, cloudspace_name, location, spacesecret=None):
         params = {'username': login, 'password': password, 'authkey': ''}
         response = requests.post('https://www.mothership1.com/restmachine/cloudapi/users/authenticate', params)
         if response.status_code != 200:
