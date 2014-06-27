@@ -1,0 +1,7 @@
+project=test
+login=root
+passwd=rooter
+
+< !user.alias despiegk
+< alias=kristof,kds
+> OK

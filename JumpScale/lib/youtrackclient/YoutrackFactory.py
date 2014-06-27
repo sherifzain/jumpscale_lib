@@ -2,7 +2,7 @@ from JumpScale import j
 import sys
 sys.path.append("%s/lib/youtrackclient/"%j.dirs.jsLibDir)
 from youtrack.connection import Connection
-import JumpScale.baselib.txtrobot
+import JumpScale.lib.txtrobot
 import copy
 import ujson as json
 
@@ -14,6 +14,7 @@ project (proj,p)
 user (u)
 - list (l)
 - refresh (r)
+- alias
 
 story (issue,bug)
 - list (l)
@@ -22,6 +23,10 @@ story (issue,bug)
 -- start #startpoint e.g. 10 is id
 -- filter (f) #is filter like used in youtrack
 -- verbose (v) #1-3 3 being most verbose
+
+- assignee
+-- name
+-- who
 
 - get
 -- id
@@ -92,7 +97,7 @@ class YouTrackRobotCmds():
 
     def getLoginPasswd(self,args):
         if not args.has_key("login") or not args.has_key("passwd"):
-            raise RuntimeError("could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
+            raise RuntimeError("E:could not find login & passwd info, please specify login=..\npasswd=..\n\n before specifying any cmd")
         return args["login"],args["passwd"]
 
     def getClient(self,args):
@@ -128,7 +133,7 @@ class YouTrackRobotCmds():
         self.txtrobot.redis.delete("youtrack:user")
         for user in client.getUsers():
             user=client.getUser(user.login)
-            print user
+            # print user
             user2={}
             user2["name"]=user.fullName
             user2["login"]=user.login
@@ -140,6 +145,12 @@ class YouTrackRobotCmds():
             self.txtrobot.redis.hset("youtrack:user",user2["login"].lower(),data)
             self.txtrobot.redis.hset("youtrack:user",user2["name"].lower(),data)
         return "Refresh OK"
+
+    def user__alias(self,**args):
+        for alias in args["alias"].split(","):
+            if alias.strip()<>"":
+                self.txtrobot.redis.hset("youtrack:useralias",alias,args["name"])
+        return "OK"
 
     def _getProject(self,name):
         data=self.txtrobot.redis.hget("youtrack:project",name.lower())
@@ -161,7 +172,7 @@ class YouTrackRobotCmds():
         client=self.getClient(args)
 
         if not args.has_key("project"):
-            return self.error("Cannot list stories when project not mentioned")
+            raise RuntimeError("E:Cannot list stories when project not mentioned")
 
         if args.has_key("state"):
             if args["state"]=="open":
@@ -188,7 +199,7 @@ class YouTrackRobotCmds():
 
         proj=self._getProject(args["project"])
         if proj==None:
-            return "Could not find project:'%s'"%args["project"]
+            raise RuntimeError("E:Could not find project:'%s'"%args["project"])
 
         issues=client.getIssues(proj["id"],filt,args["start"],args["max"])
 
@@ -230,6 +241,15 @@ class YouTrackRobotCmds():
             done+="%s,"%story.id
         return "COMMENT:%s"%done
 
+    def story__assign(self,**args):
+        client=self.getClient(args)
+        done=""
+        for story in self._storiesGet(args):            
+            client.executeCommand(story.id,"assignee",args["who"])
+            done+="%s,"%story.id
+        return "ASSIGN:%s"%done
+
+
     def story__delete(self,**args):
         client=self.getClient(args)
         done=""
@@ -266,7 +286,7 @@ class YouTrackRobotCmds():
             args2["name"]=args["parent"]
             parent=self._storiesGet(args2)
             if len(parent)>1:
-                return "**ERROR**: CANNOT LINK TO MORE THAN 1 PARENT."
+                raise RuntimeError("E:CANNOT LINK TO MORE THAN 1 PARENT.")
             parent=parent[0]
             client.executeCommand(story.id,"subtask of %s"%parent.id)            
             done+="%s,"%story.id            
@@ -278,7 +298,7 @@ class YouTrackRobotCmds():
 
         proj=self._getProject(args["project"])
         if proj==None:
-            raise RuntimeError("Could not find project:'%s'"%args["project"])
+            raise RuntimeError("E:Could not find project:'%s'"%args["project"])
 
         stories=[]
 
@@ -362,77 +382,101 @@ class YouTrackRobotCmds():
         
         proj=self._getProject(args["project"])
         if proj==None:
-            return "Could not find project:'%s'"%args["project"]
+            raise RuntimeError("E:Could not find project:'%s'"%args["project"])
 
         issues=client.getIssues(proj["id"],"summary: \"%s\""%args["name"],0,100)
 
         if len(issues)>1:
-            return self.txtrobot.error("Found more than 1 story with samen name:%s"%args["name"])
+            raise RuntimeError("E:Found more than 1 story with samen name:%s"%args["name"])
         elif len(issues)==1:
             issue=issues[0]
-
-            if len(issue.getAttachments())>0:
-                return self.txtrobot.error("Cannot update the story, there are attachments, not supported")
-
             if not args.has_key("prio"):
-                args["prio"]= self._prioNameToId(issue.Priority)
+                args["prio"]= 1
             else:
                 args["prio"]= int(args["prio"])
 
             if int(args["prio"])>4:
                 args["prio"]=4
 
-            if issue.__dict__.has_key('Fix versions'):
-                fv=issue.__dict__['Fix versions']
-            else:
-                fv=[]
-
             if not args.has_key("who"):
-                if issue.__dict__.has_key('Assignee'):
-                    who= issue.Assignee
-                else:
-                    user=self._getUser(proj["lead"])
-                    if user==None:
-                        return "Could not find user:'%s'"%proj["lead"]
-                    who=user["login"]
-            else:
-                user=self._getUser(args["who"])
-                if user==None:
-                    return self.txtrobot.error("Could not find user:'%s'"%args["who"])
-                who=user["login"]
-           
+                args["who"]= proj["lead"]
+            user=self._getUser(args["who"])
+            if user==None:
+                raise RuntimeError("E:Could not find user:'%s'"%args["who"])
+            who=user["login"]
+
             if not args.has_key("descr"):
-                if not issue.__dict__.has_key('description'):
-                    args["descr"]=""
-                else:
-                    args["descr"]=issue.description                
+                args["descr"]= ""
 
-            args["descr"]=args["descr"].replace("\\n","\n")
+            result=client.updateIssue(issue.id,summary=args["name"],description=args["descr"])
 
-            data = {'numberInProject':str(int(issue.numberInProject)),
-                        'summary':issue.summary,
-                        'description':args["descr"],
-                        'priority':str(args["prio"]),
-                        'fixedVersion':fv,
-                        'type':issue.Type,
-                        'state':issue.State,
-                        'created':str(issue.created),
-                        'reporterName': issue.reporterName,
-                        'assigneeName':who}
+            client.executeCommand(issue.id,"Assignee %s"%args["who"],"") 
+
+            
+            # if len(issue.getAttachments())>0:
+            #     raise RuntimeError(E:Cannot update the story, there are attachments, not supported")
+
+            # if not args.has_key("prio"):
+            #     args["prio"]= self._prioNameToId(issue.Priority)
+            # else:
+            #     args["prio"]= int(args["prio"])
+
+            # if int(args["prio"])>4:
+            #     args["prio"]=4
+
+            # if issue.__dict__.has_key('Fix versions'):
+            #     fv=issue.__dict__['Fix versions']
+            # else:
+            #     fv=[]
+
+            # if not args.has_key("who"):
+            #     if issue.__dict__.has_key('Assignee'):
+            #         who= issue.Assignee
+            #     else:
+            #         user=self._getUser(proj["lead"])
+            #         if user==None:
+            #             raise RuntimeError("E:Could not find user:'%s'"%proj["lead"]
+            #         who=user["login"]
+            # else:
+            #     user=self._getUser(args["who"])
+            #     if user==None:
+            #         raise RuntimeError("E:Could not find user:'%s'"%args["who"])
+            #     who=user["login"]
+           
+            # if not args.has_key("descr"):
+            #     if not issue.__dict__.has_key('description'):
+            #         args["descr"]=""
+            #     else:
+            #         args["descr"]=issue.description                
+
+            # args["descr"]=args["descr"].replace("\\n","\n")
+
+            # data = {'numberInProject':str(int(issue.numberInProject)),
+            #             'summary':issue.summary,
+            #             'description':args["descr"],
+            #             'priority':str(args["prio"]),
+            #             'fixedVersion':fv,
+            #             'type':issue.Type,
+            #             'state':issue.State,
+            #             'created':str(issue.created),
+            #             'reporterName': issue.reporterName,
+            #             'assigneeName':who}
 
 
-            links=issue.getLinks()
-            comments=issue.getComments()
+            # links=issue.getLinks()
+            # comments=issue.getComments()
 
-            client.deleteIssue(issue.id)
+            # client.deleteIssue(issue.id)
 
-            result =client.importIssues(proj["id"],"Developers",[data])
-            client.importLinks(links)
+            # result =client.importIssues(proj["id"],"Developers",[data])
+            # client.importLinks(links)
 
-            for comment in comments:
-                client.executeCommand(issue.id,"comment",comment.text)
+            # for comment in comments:
+            #     client.executeCommand(issue.id,"comment",comment.text)
 
             idd=issue.id
+
+            msg="Issue updated with id:%s"%idd
 
         else:
             if not args.has_key("prio"):
@@ -447,7 +491,7 @@ class YouTrackRobotCmds():
                 args["who"]= proj["lead"]
             user=self._getUser(args["who"])
             if user==None:
-                return "Could not find user:'%s'"%args["who"]
+                raise RuntimeError("E:Could not find user:'%s'"%args["who"])
             who=user["login"]
 
             if not args.has_key("descr"):
@@ -460,6 +504,8 @@ class YouTrackRobotCmds():
             if args.has_key("comment"):            
                 client.executeCommand(idd,"comment", args["comment"])
 
+            msg="Issue created with id:%s"%idd
+
         if args.has_key("parent"):            
             args2=copy.copy(args)
             if args2.has_key("id"):
@@ -471,5 +517,7 @@ class YouTrackRobotCmds():
             parent=parent[0]
             client.executeCommand(idd,"subtask of %s"%parent.id)            
 
-        return result        
+            
+
+        return msg
 

@@ -1,5 +1,5 @@
 from JumpScale import j
-import JumpScale.baselib.txtrobot
+import JumpScale.lib.txtrobot
 import JumpScale.lib.ms1
 import ujson as json
 

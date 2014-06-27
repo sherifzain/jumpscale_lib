@@ -1,0 +1,14 @@
+login=root
+passwd=rooter
+
+project=test
+
+!story.new
+name=first working version of cloud.robot  <CR>
+descr=...
+not bad
+yes
+...
+
+
+

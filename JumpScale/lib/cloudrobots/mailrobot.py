@@ -11,7 +11,7 @@ from formatter import AbstractFormatter, DumbWriter
 from cStringIO import StringIO
 from .httprobot import HTTPRobot
 
-
+import JumpScale.baselib.redisworker
 
 class MailRobot(SMTPServer):
 
@@ -58,23 +58,12 @@ class MailRobot(SMTPServer):
             output = ''
             robot_processor = msg['To'].split('@')[0]
             if self.robots.has_key(robot_processor):
-                robot=self.robots(robot_processor)
+                robot=self.robots[robot_processor]
                 output = robot.process(commands_str)
             else:
                 output = 'Could not match any robot. Please make sure you are sending to the right one, \'youtrack\' & \'machine\' are supported.'
             
             j.clients.email.send([mailfrom], "%s@%"%(robot_processor,self.domain), msg.get('subject'), output)
         except Exception,e:
-            j.clients.email.send([mailfrom], "%s@%"%(robot_processor,self.domain), msg.get('subject'), 'A generic error has occured. Please try again later')
+            j.clients.email.send([mailfrom], "%s@%"%(robot_processor,self.domain), msg.get('subject'), 'A generic error has occured on server.')
 
-class MailRobotFactory(object):
-    def startMailServer(self,robots={}):
-        robot = MailRobot(('0.0.0.0', 25))
-        robot.robots=robots
-        print "start server on port:25"
-        robot.serve_forever()
-
-    def startHTTP(self, addr='0.0.0.0', port=8099,robots={}):
-        robot=HTTPRobot(addr=addr, port=port)
-        robot.robots=robots
-        robot.start()

@@ -1,0 +1,104 @@
+project=test
+login=root
+passwd=rooter
+
+< !story.new
+< name=get more users (25) on youtrack
+< descr=reinstall on our own env\n
+< prio=4
+< who=despiegk
+> Issue updated with id:test-2
+
+< !story.new
+< name=Villa <GN20>
+< descr=everything to with making house better
+> Issue updated with id:test-4
+
+< !story.new
+< name=stop noise of pergola
+< descr=when a lot of wind the pergola goes up and down and makes lots of noise\nfix some wooden bar or so on top of it to keep it steady\n
+< prio=2
+< parent=<GN20>
+> Issue updated with id:test-5
+
+< !story.new
+< name=new front door which locks well
+< descr=door is now too small\norder new one, make sure it locks properly and keeps sand out\n
+< prio=2
+< parent=<GN20>
+> Issue updated with id:test-6
+
+< !story.new
+< name=paint house
+< prio=2
+< parent=<GN20>
+> Issue updated with id:test-7
+
+< !story.new
+< name=unsafe electricity for sauna
+< descr=power cable from sauna needs to go directly to  power closet\nin same way how sauna works\n
+< prio=3
+< parent=<GN20>
+> Issue updated with id:test-8
+
+< !story.new
+< name=clean garage
+< descr=big clean\nget all sand out\nremove old stuff\n
+< prio=3
+< parent=<GN20>
+> Issue updated with id:test-9
+
+< !story.new
+< name=too much water is spoiled for plants
+< descr=certain of the tubes for water flooding are not terminated properly (so water goes out to easily)\ncheck all tubes, make sure they only produce water in right amount\n
+< prio=3
+< parent=<GN20>
+> Issue updated with id:test-10
+
+< !story.new
+< name=boats <B>
+> Issue updated with id:test-11
+
+< !story.new
+< name=engine bayliner
+< descr=engine bayliner had lots of issues last nov\nmarcel said he knows what to do\nif marcel can't, see with someone else\nthe engine needs to be reliable\n
+< prio=4
+< parent=<B>
+> Issue updated with id:test-12
+
+< !story.new
+< name=new cover bayliner
+< descr=cover bayliner is completely gone, need new one\n
+< prio=2
+< parent=<B>
+> Issue updated with id:test-13
+
+< !story.new
+< name=new radio for bayliner
+< descr=make sure loudspeakers & radio is working well\nmake sure nice loudspeakers\n
+< prio=3
+< parent=<B>
+> Issue updated with id:test-14
+
+< !story.new
+< name=wakeboard boots
+< descr=some of the small robes are broken\nneed new ones\n
+< prio=2
+< parent=<B>
+> Issue updated with id:test-15
+
+< !story.new
+< name=boats <GB>
+> Issue updated with id:test-16
+< !story.new
+< name=check insurance is good enough for GB1
+< descr=does insurance cover going over ocean? in times we do\n
+< prio=4
+< parent=<GB>
+> Issue updated with id:test-17
+
+< !story.new
+< name=order autopilot for dragonfly
+< descr=need to know type\norder in US send to BE, maybe in time to bring on next trip\n
+< prio=4
+> Issue updated with id:test-3

@@ -52,8 +52,9 @@ class Connection(object):
             self.headers = {'X-YouTrack-ApiKey': api_key}
 
     def _login(self, login, password):
-        response, content = self.http.request(
-            self.baseUrl + "/user/login?login=" + urllib.quote_plus(login) + "&password=" + urllib.quote_plus(password),
+        url=self.baseUrl + "/user/login?login=" + urllib.quote_plus(login) + "&password=" + urllib.quote_plus(password)
+        response, content = self.http.request(url
+            ,
             'POST',
             headers={'Content-Length': '0', 'Connection': 'keep-alive'})
         if response.status != 200:
@@ -131,6 +132,12 @@ class Connection(object):
 
         return self._reqXml('PUT', '/issue?' + urllib.urlencode(params), '')
 
+    def updateIssue(self, issueid, summary, description):
+        params = {'summary': summary,
+                  'description': description}        
+        return self._req('POST', '/issue/%s?'%issueid+ urllib.urlencode(params), '')
+
+
     def get_changes_for_issue(self, issue):
         return [youtrack.IssueChange(change, self) for change in
                 self._get("/issue/%s/changes" % issue).getElementsByTagName('change')]
@@ -192,7 +199,7 @@ class Connection(object):
             raise e
             
 
-    def _process_attachmnets(self, authorLogin, content, contentLength, contentType, created, group, issueId, name,
+    def _process_attachments(self, authorLogin, content, contentLength, contentType, created, group, issueId, name,
                              url_prefix='/issue/'):
         if contentType is not None:
             content.contentType = contentType
@@ -237,12 +244,12 @@ class Connection(object):
 
     def createAttachment(self, issueId, name, content, authorLogin='', contentType=None, contentLength=None,
                          created=None, group=''):
-        return self._process_attachmnets(authorLogin, content, contentLength, contentType, created, group, issueId,
+        return self._process_attachments(authorLogin, content, contentLength, contentType, created, group, issueId,
             name)
 
     def importAttachment(self, issue_id, name, content, authorLogin, contentType, contentLength, created=None,
                          group=''):
-        return self._process_attachmnets(authorLogin, content, contentLength, contentType, created, group, issue_id,
+        return self._process_attachments(authorLogin, content, contentLength, contentType, created, group, issue_id,
             name, '/import/')
 
 

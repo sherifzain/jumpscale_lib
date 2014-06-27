@@ -12,6 +12,6 @@ import logging
 logger = logging.getLogger('gsmtpd')
 logger.setLevel(logging.ERROR)
 
-j.servers.mailrobot.startMailServer(robots=robots)
+j.servers.cloudrobot.startMailServer(robots=robots)
 
 j.application.stop(0)
