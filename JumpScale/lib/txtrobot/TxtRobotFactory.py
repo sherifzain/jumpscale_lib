@@ -2,7 +2,7 @@ from JumpScale import j
 import yaml
 import JumpScale.baselib.hash
 from TxtRobotHelp import TxtRobotHelp
-from TxtRobotSnippet import TxtRobotSnippet
+
 import JumpScale.baselib.redis
 import copy
 
@@ -34,7 +34,7 @@ class TxtRobot():
         self._initCmds(definition)
         self.cmdsToImpl={}
         self.help=TxtRobotHelp()
-        self.snippet = TxtRobotSnippet()
+        # self.snippet = TxtRobotSnippet()
         self.cmdobj=None
         self.redis=j.clients.redis.getRedisClient("localhost",7768)
         self.codeblocks={}
