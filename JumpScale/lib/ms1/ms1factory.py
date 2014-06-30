@@ -82,16 +82,6 @@ class MS1RobotFactory(object):
         return robot
 
 class MS1RobotCmds():
-    def _customizeMessage(self, cmd, success, **args):
-        prepend = ''
-        if success:
-            prepend = '> '
-        message = '%s%s<br/>' % (prepend, cmd)
-        for arg, val in args.iteritems():
-            if arg == 'spacesecret':
-                continue
-            message += '%s%s=%s<br/>' % (prepend, arg, val)
-        return message
 
     def machine__new(self, **args):
         machine_id = j.tools.ms1.deployMachineDeck(**args)
@@ -101,58 +91,32 @@ class MS1RobotCmds():
         return j.tools.ms1.listMachinesInSpace(**args)
 
     def machine__delete(self, **args):
-        if j.tools.ms1.deleteMachine(**args):
-            return 'Machine %s was deleted successfully ' % args['name']
-        else:
-            return 'There was a problem deleting machine %s ' % args['name']
+        j.tools.ms1.deleteMachine(**args)
+        return 'Machine %s was deleted successfully ' % args['name']
 
     def machine__start(self, **args):
         status = j.tools.ms1.startMachine(**args)
-        message = self._customizeMessage('!machine.start', status, **args)
-        if status:
-            return '%s> Machine %s was started successfully.<br/>' % (message, args['name'])
-        else:
-            return '%s< There was a problem starting machine %s.<br/>' % (message, args['name'])
+        return 'Machine %s was started successfully.' % (args['name'])        
 
     def machine__stop(self, **args):
         status = j.tools.ms1.stopMachine(**args)
-        message = self._customizeMessage('!machine.stop', status, **args)
-        if status:
-            return '%s> Machine %s was stopped successfully.<br/>' % (message, args['name'])
-        else:
-            return '%s< There was a problem stopping machine %s.<br/>' % (message, args['name'])
+        return 'Machine %s was stopped successfully.' % (args['name'])        
 
     def machine__snapshot(self, **args):
         status = j.tools.ms1.snapshotMachine(**args)
-        message = self._customizeMessage('!machine.snapshot', status, **args)
-        if status:
-            return '%s> Snapshot %s was created successfully.<br/>' % (message, args['snapshotname'])
-        else:
-            return '%s< There was a problem creating snapshot %s.<br/>' % (message, args['snapshotname'])
+        return 'Snapshot %s for %s was successfull.' % (args['snapshotname'],args['name'])
 
     def machine__tcpportforward(self, **args):
         status = j.tools.ms1.createTcpPortForwardRule(**args)
-        message = self._customizeMessage('!machine.tcpportforward', status, **args)
-        if status:
-            return '%s> Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s ' % (message, args['machinetcpport'], args['name'], args['pubip'], args['pubipport'])
-        else:
-            return '%s< There was a problem creating port-forwarding rule.<br/>' % message
+        return 'Port-forwarding rule was created successfully.' 
 
     def machine__udpportforward(self, **args):
         status = j.tools.ms1.createUdpPortForwardRule(**args)
-        message = self._customizeMessage('!machine.udpportforward', status, **args)
-        if status:
-            return '%s> Port-forwarding rule was created successfully. Port %s on machine %s was forwarded to %s port %s ' % (message, args['machineudpport'], args['name'], args['pubip'], args['pubipport'])
-        else:
-            return '%s< There was a problem creating port-forwarding rule.<br/>' % message
+        return 'Port-forwarding rule was created successfully.' 
 
     def machine__execssh(self, **args):
         return j.tools.ms1.execSshScript(**args)
 
     def mothership1__login(self, **args):
-        status, result = j.tools.ms1.setClouspaceSecret(**args)
-        message = self._customizeMessage('!mothership1.login', status, **args)
-        if status:
-            return result, '%s> This is your cloudspace secret %s.<br/>' % (message, result)
-        else:
-            return result, '%s< Login was not successfull. %s<br/>' % (message, result)
+        result = j.tools.ms1.setClouspaceSecret(**args)
+        return "spacesecret=%s" % (result)

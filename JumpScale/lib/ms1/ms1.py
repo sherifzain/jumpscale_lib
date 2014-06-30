@@ -13,9 +13,9 @@ class MS1(object):
         self.IMAGE_NAME = 'Ubuntu 14.04 (JumpScale)'
         self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', int(j.application.config.get('redis.port.redisp')))
 
-    def getCloudspaceId(self, space_secret):
+    def getCloudspaceId(self, space_secret,**args):
         if not self.redis_cl.hexists('cloudspaces:secrets', space_secret):
-            return 'Space secret does not exist'
+            raise RuntimeError("E:Space secret does not exist, cannot continue (END)")
         return int(self.redis_cl.hget('cloudspaces:secrets', space_secret))
 
     def setClouspaceSecret(self, login, password, cloudspace_name, location, spacesecret=None,**args):
@@ -36,14 +36,14 @@ class MS1(object):
         self.redis_cl.hset('cloudspaces:secrets', auth_key, cloudspace['id'])
         return auth_key
 
-    def getCloudspaceLocation(self, space_secret):
+    def getCloudspaceLocation(self, space_secret,**args):
         cloudspace_id = self.getCloudspaceId(space_secret)
         portal_client = j.core.portal.getClient('www.mothership1.com', 443, space_secret)
         cloudspaces_actor = portal_client.getActor('cloudapi', 'cloudspaces')
         cloudspace = [cs for cs in cloudspaces_actor.list() if cs['id'] == cloudspace_id][0] # TODO use get instead of list
         return cloudspace['location']
 
-    def getApiConnection(self, space_secret):
+    def getApiConnection(self, space_secret,**args):
         location = self.getCloudspaceLocation(space_secret)
         host = 'www.mothership1.com' if location == 'ca1' else '%s.mothership1.com' % location
         try:
@@ -55,7 +55,7 @@ class MS1(object):
             raise RuntimeError("E:Could not login to MS1 API.")
             
 
-    def deployAppDeck(self, spacesecret, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='solutions', jpname=None, config=None, description=None):
+    def deployAppDeck(self, spacesecret, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='solutions', jpname=None, config=None, description=None,**args):
         machine_id = self.deployMachineDeck(spacesecret, name, memsize, ssdsize, vsansize, description)
         api = self.getApiConnection(location)
         portforwarding_actor = api.getActor('cloudapi', 'portforwarding')
@@ -110,7 +110,7 @@ class MS1(object):
                     portforwarding_actor.create(machine['cloudspaceid'], cloudspace['publicipaddress'], str(port), machine['id'], str(port))
         return {'publicip': cloudspace['publicipaddress']}
 
-    def deployMachineDeck(self, spacesecret, name, memsize=1024, ssdsize=40, vsansize=0, description=''):
+    def deployMachineDeck(self, spacesecret, name, memsize=1024, ssdsize=40, vsansize=0, description='',**args):
         # get actors
         api = self.getApiConnection(spacesecret)
         cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
@@ -121,16 +121,16 @@ class MS1(object):
         # validate args
         cloudspace_id = self.getCloudspaceId(spacesecret)
         image_ids = [image['id'] for image in images_actor.list() if image['name'] == self.IMAGE_NAME]
-        if len(image_ids)=0:
+        if len(image_ids)==0:
             raise RuntimeError('E:Could not find a matching image')
         size_ids = [size['id'] for size in sizes_actor.list() if size['memory'] == int(memsize)]
-        if len(size_ids)=0:
+        if len(size_ids)==0:
             raise RuntimeError('E:Could not find a matching size')
         # create machine
         machine_id = machines_actor.create(cloudspaceId=cloudspace_id, name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=int(ssdsize))
         return machine_id
 
-    def listMachinesInSpace(self, spacesecret):
+    def listMachinesInSpace(self, spacesecret,**args):
         # get actors
         api = self.getApiConnection(spacesecret)
         machines_actor = api.getActor('cloudapi', 'machines')
@@ -139,7 +139,7 @@ class MS1(object):
         machines = machines_actor.list(cloudspaceId=cloudspace_id)
         return machines
 
-    def _getMachineApiActorId(self, spacesecret, name)):
+    def _getMachineApiActorId(self, spacesecret, name,**args):
         api=self.getApiConnection(spacesecret)
         cloudspace_id = self.getCloudspaceId(spacesecret)
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
@@ -149,7 +149,7 @@ class MS1(object):
         actor=api.getActor('cloudapi', 'machines')
         return (api,actor,machine_id,cloudspace_id)
 
-    def deleteMachine(self, spacesecret, name):
+    def deleteMachine(self, spacesecret, name,**args):
         api,machines_actor,machine_id,cloudspace_id=self._getMachineApiActorId(spacesecret,name)
         try:
             machines_actor.delete(machine_id)
@@ -157,7 +157,7 @@ class MS1(object):
             raise RuntimeError("E:could not start machine.")
         return "OK"
 
-    def startMachine(self, spacesecret, name):
+    def startMachine(self, spacesecret, name,**args):
         api,machines_actor,machine_id,cloudspace_id=self._getMachineApiActorId(spacesecret,name)
         try:
             machines_actor.start(machine_id)
@@ -165,7 +165,7 @@ class MS1(object):
             raise RuntimeError("E:could not start machine.")
         return "OK"
 
-    def stopMachine(self, spacesecret, name):
+    def stopMachine(self, spacesecret, name,**args):
         api,machines_actor,machine_id,cloudspace_id=self._getMachineApiActorId(spacesecret,name)
         try:
             machines_actor.stop(machine_id)
@@ -173,7 +173,7 @@ class MS1(object):
             raise RuntimeError("E:could not stop machine.")
         return "OK"
 
-    def snapshotMachine(self, spacesecret, name, snapshotname):
+    def snapshotMachine(self, spacesecret, name, snapshotname,**args):
         api,machines_actor,machine_id,cloudspace_id=self._getMachineApiActorId(spacesecret,name)
         try:
             machines_actor.snapshot(machine_id,snapshotname)
@@ -181,25 +181,19 @@ class MS1(object):
             raise RuntimeError("E:could not stop machine.")
         return "OK"
 
-    def createTcpPortForwardRule(self, spacesecret, name, machinetcpport, pubip, pubipport):
+    def createTcpPortForwardRule(self, spacesecret, name, machinetcpport, pubip, pubipport,**args):
         return self._createPortForwardRule(spacesecret, name, machinetcpport, pubip, pubipport, 'tcp')
 
-    def createUdpPortForwardRule(self, spacesecret, name, machineudpport, pubip, pubipport):
+    def createUdpPortForwardRule(self, spacesecret, name, machineudpport, pubip, pubipport,**args):
         return self._createPortForwardRule(spacesecret, name, machineudpport, pubip, pubipport, 'udp')
 
-    def _createPortForwardRule(self, spacesecret, name, machineport, pubip, pubipport, protocol):
-        api = self.getApiConnection(spacesecret)
+    def _createPortForwardRule(self, spacesecret, name, machineport, pubip, pubipport, protocol,**args):
+        api,machines_actor,machine_id,cloudspace_id=self._getMachineApiActorId(spacesecret,name)
         portforwarding_actor = api.getActor('cloudapi', 'portforwarding')
-        machines_actor = api.getActor('cloudapi', 'machines')
-        cloudspace_id = self.getCloudspaceId(spacesecret)
-        machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
-        if not machine_id:
-            return False
-        machine_id = machine_id[0]
         portforwarding_actor.create(cloudspace_id, pubip, pubipport, machine_id, machineport, protocol)
-        return True
+        return "OK"
 
-    def execSshScript(self, spacesecret, name, sshport, script):
+    def execSshScript(self, spacesecret, name, sshport, script,**args):
         api = self.getApiConnection(spacesecret)
         machines_actor = api.getActor('cloudapi', 'machines')
         cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
