@@ -11,28 +11,30 @@ from robots import *
 
 for channel in robots.keys():
     for item in ["in","out","err","logs","jobs"]:
-        j.system.fs.createDir("%s/%s"%(channel,item))
+        j.system.fs.createDir("data/%s/%s"%(channel,item))
 
 def findGlobal(C,name):
     for line in C.split("\n"):
         line=line.strip()
+        print line    
         if line.find("@%s"%name)==0:
             name,val=line.split("=",1)
             return val.strip()
-        return "?"
+    return "?"
 
 while True:
     # channels=j.system.fs.listDirsInDir("data",False,True)
     for channel in robots.keys():
     # for channel in channels:
         for path in j.system.fs.listFilesInDir("data/%s/in/"%channel):
-            C=j.system.fs.fileGetContents(path)
-            name="%s_%s_%s.txt"%(j.base.time.getTimeEpoch(),j.base.time.getLocalTimeHRForFilesystem(),findGlobal(C,"source"))
-            j.system.fs.writeFile("data/%s/jobs/%s"%(channel,name),result)
+            name0=j.system.fs.getBaseName(path).replace(".txt","")
+            C=j.system.fs.fileGetContents(path)            
+            name="%s_%s_%s_%s.txt"%(j.base.time.getTimeEpoch(),j.base.time.getLocalTimeHRForFilesystem(),name0,findGlobal(C,"source"))
+            j.system.fs.writeFile("data/%s/jobs/%s"%(channel,name),C)
             print "PROCESS:%s"%path
             result=robots[channel].process(C)
             j.system.fs.remove(path)
-            name=j.system.fs.getBaseName(path)
+            
             if result.find(">ERROR:")<>-1:
                 print "ERROR, see %s"%path
                 path="data/%s/err/%s"%(channel,name)

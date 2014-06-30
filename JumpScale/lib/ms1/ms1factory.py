@@ -9,7 +9,7 @@ mothership1 (ms1)
 -- login
 -- password
 -- cloudspace_name
--- location
+-- location #ca1,us1,us2,be1
 
 machine (m)
 - list (l)

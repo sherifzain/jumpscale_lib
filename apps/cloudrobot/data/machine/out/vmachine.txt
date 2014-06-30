@@ -1,0 +1,10 @@
+< !ms1.login
+< login=despiegk
+< password=R00t3r
+< cloudspace_name=default
+< location=york
+> !!python/tuple
+> - Could not find a matching cloud space with name default and location york
+> - '!mothership1.login<br/>login=despiegk<br/>password=R00t3r<br/>cloudspace_name=default<br/>location=york<br/><
+>   Login was not successfull. Could not find a matching cloud space with name default
+>   and location york<br/>'

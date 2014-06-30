@@ -1,0 +1,9 @@
+@source=kristof@incubaid.com
+
+!ms1.login
+login=despiegk
+password=R00t3r
+cloudspace_name=default
+location=york
+>ERROR: Cannot execute: 'mothership1':'login'
+>ERROR: Could not find a matching cloud space with name default and location york
