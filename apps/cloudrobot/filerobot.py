@@ -1,6 +1,9 @@
 from JumpScale import j
 
+import JumpScale.portal
+
 from robots import *
+
 import time
 
 j.application.start('filerobot')
@@ -23,6 +26,8 @@ def findGlobal(C,name):
             name,val=line.split("=",1)
             return val.strip()
     return "?"
+
+
 
 while True:
     # channels=j.system.fs.listDirsInDir("data",False,True)

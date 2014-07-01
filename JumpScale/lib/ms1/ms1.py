@@ -2,8 +2,10 @@ import requests
 import time
 from JumpScale import j
 import JumpScale.portal
+
 import JumpScale.baselib.remote
 import JumpScale.baselib.redis
+import JumpScale.portal
 import ujson as json
 
 class MS1(object):
@@ -13,10 +15,15 @@ class MS1(object):
         self.IMAGE_NAME = 'Ubuntu 14.04 (JumpScale)'
         self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', int(j.application.config.get('redis.port.redisp')))
 
-    def getCloudspaceId(self, space_secret,**args):
-        if not self.redis_cl.hexists('cloudspaces:secrets', space_secret):
+    def getCloudspaceObj(self, space_secret,**args):
+        if not self.redis_cl.hexists('cloudrobot:cloudspaces:secrets', space_secret):
             raise RuntimeError("E:Space secret does not exist, cannot continue (END)")
-        return int(self.redis_cl.hget('cloudspaces:secrets', space_secret))
+        space=json.loads(self.redis_cl.hget('cloudrobot:cloudspaces:secrets', space_secret))
+        return space
+
+    def getCloudspaceId(self,space_secret,**args):
+        cs=self.getCloudspaceObj(space_secret)
+        return cs["id"]
 
     def setClouspaceSecret(self, login, password, cloudspace_name, location, spacesecret=None,**args):
         params = {'username': login, 'password': password, 'authkey': ''}
@@ -33,27 +40,22 @@ class MS1(object):
             cloudspace = cloudspace[0]
         else:
             raise RuntimeError("E:Could not find a matching cloud space with name %s and location %s" % (cloudspace_name, location))
-        self.redis_cl.hset('cloudspaces:secrets', auth_key, cloudspace['id'])
+
+        self.redis_cl.hset('cloudrobot:cloudspaces:secrets', auth_key, json.dumps(cloudspace))
         return auth_key
 
-    def getCloudspaceLocation(self, space_secret,**args):
-        cloudspace_id = self.getCloudspaceId(space_secret)
-        portal_client = j.core.portal.getClient('www.mothership1.com', 443, space_secret)
-        cloudspaces_actor = portal_client.getActor('cloudapi', 'cloudspaces')
-        cloudspace = [cs for cs in cloudspaces_actor.list() if cs['id'] == cloudspace_id][0] # TODO use get instead of list
-        return cloudspace['location']
-
     def getApiConnection(self, space_secret,**args):
-        location = self.getCloudspaceLocation(space_secret)
-        host = 'www.mothership1.com' if location == 'ca1' else '%s.mothership1.com' % location
+        cs=self.getCloudspaceObj(space_secret)
+
+        host = 'www.mothership1.com' if cs["location"] == 'ca1' else '%s.mothership1.com' % cs["location"]
         try:
-            j.core.portal.getClient(host, 443, space_secret)
+            api=j.core.portal.getClient(host, 443, space_secret)
         except Exception,e:
-            from IPython import embed
-            print "DEBUG NOW getApiConnection"
-            embed()
             raise RuntimeError("E:Could not login to MS1 API.")
-            
+
+        # system = api.getActor("system", "contentmanager")
+
+        return api            
 
     def deployAppDeck(self, spacesecret, name, memsize=1024, ssdsize=40, vsansize=0, jpdomain='solutions', jpname=None, config=None, description=None,**args):
         machine_id = self.deployMachineDeck(spacesecret, name, memsize, ssdsize, vsansize, description)
@@ -132,7 +134,7 @@ class MS1(object):
 
     def listMachinesInSpace(self, spacesecret,**args):
         # get actors
-        api = self.getApiConnection(spacesecret)
+        api = self.getApiConnection(spacesecret)        
         machines_actor = api.getActor('cloudapi', 'machines')
         cloudspace_id = self.getCloudspaceId(spacesecret)
         # list machines

@@ -1,9 +1,9 @@
 
 from JumpScale import j
 
-import JumpScale.lib.youtrackclient
-import JumpScale.lib.ms1
 
+import JumpScale.lib.ms1
+import JumpScale.lib.youtrackclient
 
 robots={}
 if j.application.config.exists("youtrackrobot.url"):

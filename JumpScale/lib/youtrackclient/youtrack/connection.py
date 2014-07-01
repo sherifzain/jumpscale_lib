@@ -3,13 +3,13 @@ from datetime import datetime
 import httplib2
 from xml.dom import minidom
 import sys
-import youtrack
+import JumpScale.lib.youtrackclient.youtrack
 from xml.dom import Node
 import urllib2
 import urllib
 from xml.sax.saxutils import escape, quoteattr
 import json
-import urllib2_file
+# import urllib2_file
 import tempfile
 import functools
 

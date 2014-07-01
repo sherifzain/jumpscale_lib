@@ -1,4 +1,4 @@
-from youtrack import YouTrackException
+from JumpScale.lib.youtrackclient.youtrack import YouTrackException
 
 def _create_custom_field_prototype(connection, cf_type, cf_name, auto_attached=False, additional_params=dict([])):
     field = _get_custom_field(connection, cf_name)

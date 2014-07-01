@@ -26,7 +26,7 @@ class TxtRobotFactory(object):
 
 class TxtRobot():
     def __init__(self,definition):
-        self.definition=definition.replace('\n', '<br/>')
+        self.definition=definition
         self.cmdAlias={}
         self.entityAlias={}
         self.entities=[]

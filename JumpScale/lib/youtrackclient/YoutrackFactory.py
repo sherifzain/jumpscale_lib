@@ -1,10 +1,12 @@
 from JumpScale import j
 import sys
-sys.path.append("%s/lib/youtrackclient/"%j.dirs.jsLibDir)
-from youtrack.connection import Connection
+# sys.path.append("%s/lib/youtrackclient/"%j.dirs.jsLibDir)
+from JumpScale.lib.youtrackclient.youtrack.connection import Connection
 import JumpScale.lib.txtrobot
 import copy
 import ujson as json
+# sys.path.pop(sys.path.index("%s/lib/youtrackclient/"%j.dirs.jsLibDir))
+
 
 initcmds="""
 project (proj,p)

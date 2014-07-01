@@ -71,7 +71,20 @@ machine (m)
 ####
 global required variables
 spacesecret=
+
+examples
+--------
+!machine.list
+
+!machine.new
+name=aname
+description=mydescr
+memsize=1
+ssdsize=10
+
+
 """
+import JumpScale.portal
 
 class MS1RobotFactory(object):
 
