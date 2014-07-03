@@ -178,7 +178,7 @@ class TxtRobot():
         return out
 
     def response(self,cblock,result):
-        if cblock<>"":
+        if cblock.strip()<>"":
             out=j.tools.text.prefix("< ",cblock)
         else:
             out=""
@@ -192,11 +192,13 @@ class TxtRobot():
 
     def responseError(self,cblock,result):
         out=cblock
-        if out[-1]<>"\n":
+
+            
+        if out.strip()<>"" and out[-1]<>"\n":
             out+="\n"        
         if result<>"":
             out+=j.tools.text.prefix(">ERROR: ",result)
-        if out[-1]<>"\n":
+        if out.strip()<>"" and out[-1]<>"\n":
             out+="\n"            
         return out
 
@@ -342,7 +344,7 @@ class TxtRobot():
 
 
     def processCmd(self, cmdblock,entity, cmd, args,gargs):
-        
+        print "EXECUTE:\n%s"%cmdblock
         args=copy.copy(args)
         for key,val in gargs.iteritems():
             args[key]=val
@@ -373,6 +375,7 @@ class TxtRobot():
         if not j.basetype.string.check(result):
             result=yaml.dump(result, default_flow_style=False).replace("!!python/unicode ","")        
         out=self.response(cmdblock,result)
+        print out
         return out
 
         # if j.basetype.list.check(result):

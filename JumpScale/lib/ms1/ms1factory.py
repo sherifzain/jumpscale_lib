@@ -19,6 +19,7 @@ machine (m)
 -- description (descr)
 -- memsize  #size is 0.5,1,2,4,8,16 in GB
 -- ssdsize  #10,20,30,40,100 in GB
+-- template (image) #id or name of template to start from
 
 - delete (del)
 -- name (n)
@@ -68,6 +69,10 @@ machine (m)
 - initjsdebug (initjumpscaledebug)
 -- name (n)
 
+template (templates,image,images)
+- list
+
+
 ####
 global required variables
 spacesecret=
@@ -97,7 +102,19 @@ class MS1RobotFactory(object):
 class MS1RobotCmds():
 
     def machine__new(self, **args):
-        machine_id = j.tools.ms1.deployMachineDeck(**args)
+        template=args["template"]        
+        res=j.tools.ms1.listImages(**args)
+        try:
+            templateid=int(template)
+        except:
+            templateid=0
+        if templateid==0:
+            if not res.has_key(template.lower().strip()):
+                raise RuntimeError("E:Cannot find template with name %s, please use !template.list to find available templates."%template)
+            else:
+                templateid=res[template.lower().strip()][0]           
+            
+        machine_id = j.tools.ms1.deployMachineDeck(templateid=templateid,**args)
         return 'Machine created successfully. Machine ID: %s ' % machine_id
 
     def machine__list(self, **args):
@@ -133,3 +150,16 @@ class MS1RobotCmds():
     def mothership1__login(self, **args):
         result = j.tools.ms1.setClouspaceSecret(**args)
         return "spacesecret=%s" % (result)
+
+    def image__list(self, **args):
+        out=""
+        res=j.tools.ms1.listImages(**args)
+
+        keys=res.keys()
+        keys.sort()
+        
+        for key in keys:
+            id,fullname=res[key]
+            out+="%-20s (%-2s) %s\n"%(key,id,fullname)
+        return out
+
