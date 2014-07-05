@@ -259,8 +259,8 @@ class TxtRobot():
             if line=="?" or line=="h" or line=="help":
                 out+=self.response("help",self.help.help())
                 continue
-            if line.find("help.definition")<>-1:
-                out+=self.response("!help.definition",self.help.help_definition())
+            if line.find("help.syntax")<>-1:
+                out+=self.response("!help.syntax",self.help.help_definition())
                 continue
             if line.find("help.cmds")<>-1:
                 out+=self.response("!help.cmds",self.definition)
@@ -292,6 +292,8 @@ class TxtRobot():
                 args={}
                 line2=line.strip("!")
                 line2=line2.strip()
+                if line2.find(".")==-1:
+                    raise RuntimeError("format needs to be !entity.cmd (here:%s)"%line2)
                 entity,cmd=line2.split(".",1)
                 entity=entity.lower().strip()
                 if cmd.find(" ")<>-1:
