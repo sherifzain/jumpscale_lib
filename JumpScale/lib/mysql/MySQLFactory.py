@@ -5,6 +5,7 @@ import calendar
 from htmllib import HTMLParser
 from formatter import AbstractFormatter, DumbWriter
 from cStringIO import StringIO
+import JumpScale.lib.html
 
 class MySQLFactory():
     """
@@ -27,11 +28,7 @@ class MySQLClient():
         self.client=cl
 
     def _html2text(self, html):
-        output = StringIO()
-        writer = DumbWriter(output)
-        p = HTMLParser(AbstractFormatter(writer))
-        p.feed(html)
-        return output.getvalue()
+        return j.tools.html.html2text(html)
 
     def _mysqlTimeToEpoch(self,mysql_time):
         if mysql_time==None:
@@ -50,9 +47,6 @@ class MySQLClient():
         self.client.query(Q)
         result = self.client.use_result()
         if result<>None:
-            from IPython import embed
-            print "DEBUG NOW id"
-            embed()
             result.fetch_row()
             
         return result      
