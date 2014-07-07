@@ -152,7 +152,7 @@ ipaddr=
             backupname+="/"
         if path[-1]<>"/":
             path+="/"
-        cmd="rsync -av -v %s %s::upload/%s/images/%s --delete-after --modify-window=60 --compress --stats  --progress --exclude '.Trash*'"%(path,ipaddr,key,backupname)
+        cmd="rsync -a %s %s::upload/%s/images/%s --delete-after --modify-window=60 --compress --stats  --progress --exclude '.Trash*'"%(path,ipaddr,key,backupname)
         # print cmd
         j.system.process.executeWithoutPipe(cmd)
 
@@ -249,8 +249,9 @@ ipaddr=
             raise RuntimeError("cannot find machine:%s"%path)
         j.system.fs.createDir(bpath)
         bpath= j.system.fs.joinPaths(bpath,"%s.tgz"%backupname)
-        cmd="cd %s;tar Szcvf %s ."%(path,bpath)
+        cmd="cd %s;tar Szcf %s ."%(path,bpath)
         j.system.process.executeWithoutPipe(cmd)
+        return bpath
 
     def importTgz(self,backupname,name):
         self._init()
