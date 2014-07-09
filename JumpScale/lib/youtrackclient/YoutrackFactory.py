@@ -1,11 +1,12 @@
 from JumpScale import j
 import sys
-# sys.path.append("%s/lib/youtrackclient/"%j.dirs.jsLibDir)
-from JumpScale.lib.youtrackclient.youtrack.connection import Connection
+sys.path.append("%s/lib/youtrackclient/"%j.dirs.jsLibDir)
+# from JumpScale.lib.youtrackclient.youtrack.connection import Connection
+from youtrack.connection import Connection
 import JumpScale.lib.txtrobot
 import copy
 import ujson as json
-# sys.path.pop(sys.path.index("%s/lib/youtrackclient/"%j.dirs.jsLibDir))
+sys.path.pop(sys.path.index("%s/lib/youtrackclient/"%j.dirs.jsLibDir))
 
 
 initcmds="""
@@ -17,6 +18,9 @@ user (u)
 - list (l)
 - refresh (r)
 - alias
+- new (n)
+-- name
+-- email
 
 story (issue,bug)
 - list (l)
@@ -129,6 +133,14 @@ class YouTrackRobotCmds():
             self.txtrobot.redis.hset("youtrack:project",key.lower(),data)
             self.txtrobot.redis.hset("youtrack:project",pname.lower(),data)
         return "Refresh OK"
+
+    def user__new(self,**args):
+        client=self.getClient(args)
+        client.createUserDetailed(args["name"],args["fullname"],args["email"],args["jabber"])        
+        from IPython import embed
+        print "DEBUG NOW ooo"
+        embed()
+        
 
     def user__refresh(self,**args):
         client=self.getClient(args)
@@ -250,7 +262,6 @@ class YouTrackRobotCmds():
             client.executeCommand(story.id,"assignee",args["who"])
             done+="%s,"%story.id
         return "ASSIGN:%s"%done
-
 
     def story__delete(self,**args):
         client=self.getClient(args)
@@ -378,7 +389,6 @@ class YouTrackRobotCmds():
                 out+="\n"
         return out
         
-
     def story__create(self,**args):
         client=self.getClient(args)
         

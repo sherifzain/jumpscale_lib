@@ -3,7 +3,8 @@ from datetime import datetime
 import httplib2
 from xml.dom import minidom
 import sys
-import JumpScale.lib.youtrackclient.youtrack
+# import JumpScale.lib.youtrackclient.youtrack as youtrack
+import youtrack
 from xml.dom import Node
 import urllib2
 import urllib
@@ -12,6 +13,7 @@ import json
 # import urllib2_file
 import tempfile
 import functools
+
 
 def urlquote(s):
     return urllib.quote(utf8encode(s), safe="")
