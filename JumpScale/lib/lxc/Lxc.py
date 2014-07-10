@@ -11,8 +11,7 @@ class Lxc():
 
     def __init__(self):
         self._prefix="" #no longer use prefixes
-        self.intialized=False
-
+        self._basepath = None
 
     def execute(self, command):
         env = os.environ.copy()
@@ -22,16 +21,16 @@ class Lxc():
             raise RuntimeError("Failed to execute %s: Error: %s, %s" % (command, stdout, stderr))
         return stdout
 
-    def _init(self):
-        if self.intialized:
-            return
-        if j.application.config.exists('lxc.basepath'):
-            self.basepath = j.application.config.get('lxc.basepath')
-        else:
-            self.basepath="/mnt/vmstor/lxc" #btrfs subvol create
-        if not j.system.fs.exists(path=self.basepath):
-            raise RuntimeError("only btrfs lxc supported for now")
-        self.intialized=True
+    @property
+    def basepath(self):
+        if not self._basepath:
+            if j.application.config.exists('lxc.basepath'):
+                self._basepath = j.application.config.get('lxc.basepath')
+            else:
+                self._basepath="/mnt/vmstor/lxc" #btrfs subvol create
+            if not j.system.fs.exists(path=self._basepath):
+                raise RuntimeError("only btrfs lxc supported for now")
+        return self._basepath
 
     def _getChildren(self,pid,children):
         process=j.system.process.getProcessObject(pid)
@@ -57,7 +56,6 @@ class Lxc():
         names of running & stopped machines
         @return (running,stopped)
         """
-        self._init()
         cmd="lxc-ls --fancy  -P %s"%self.basepath
         out=self.execute(cmd)
 
@@ -81,7 +79,6 @@ class Lxc():
         return (running,stopped)
 
     def getIp(self,name,fail=True):
-        self._init()
         hrd=self.getConfig(name)
         return hrd.get("ipaddr")
 
@@ -95,7 +92,6 @@ ipaddr=
         return j.core.hrd.getHRD( path=configpath)
 
     def getPid(self,name,fail=True):
-        self._init()
         out=self.execute("lxc-info -n %s%s -p"%(self._prefix,name))
         pid=0
         for line in out.splitlines():
@@ -114,7 +110,6 @@ ipaddr=
         @return [["$name",$pid,$mem,$parent],....,[$mem,$cpu]]
         last one is sum of mem & cpu
         """
-        self._init()
         pid = self.getPid(name)
         children = list()
         children=self._getChildren(pid,children)
@@ -142,7 +137,6 @@ ipaddr=
         return result
 
     def exportRsync(self,name,backupname,key="pub"):
-        self._init()
         self.removeRedundantFiles(name)
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)
@@ -213,7 +207,6 @@ ipaddr=
         """
         @param basename is the name of a start of a machine locally, will be used as basis and then the source will be synced over it
         """    
-        self._init()
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)    
 
@@ -241,7 +234,6 @@ ipaddr=
         j.system.process.executeWithoutPipe(cmd)        
 
     def exportTgz(self,name,backupname):
-        self._init()
         self.removeRedundantFiles(name)
         path=self._getMachinePath(name)
         bpath= j.system.fs.joinPaths(self.basepath,"backups")
@@ -254,7 +246,6 @@ ipaddr=
         return bpath
 
     def importTgz(self,backupname,name):
-        self._init()
         path=self._getMachinePath(name)        
         bpath= j.system.fs.joinPaths(self.basepath,"backups","%s.tgz"%backupname)
         if not j.system.fs.exists(bpath):
@@ -268,7 +259,6 @@ ipaddr=
         """
         @param name if "" then will be an incremental nr
         """
-        self._init()
         print "create:%s"%name
         if replace:
             if j.system.fs.exists(self._getMachinePath(name)):
@@ -372,14 +362,12 @@ ipaddr=
         j.system.fs.writeFile(filename=path,contents="")
 
     def destroyAll(self):
-        self._init()
         running,stopped=self.list()
         alll=running+stopped
         for item in alll:
             self.destroy(item)
 
     def destroy(self,name):
-        self._init()
         running,stopped=self.list()
         alll=running+stopped
         print "running:%s"%",".join(running)
@@ -398,13 +386,11 @@ ipaddr=
         # #@todo put timeout in
              
     def stop(self,name):
-        self._init()
         # cmd="lxc-stop -n %s%s"%(self._prefix,name)
         cmd="lxc-stop -P %s -n %s%s"%(self.basepath,self._prefix,name)
         self.execute(cmd)
 
     def start(self,name,stdout=True,test=True):
-        self._init()
         print "start:%s"%name
         cmd="lxc-start -d -P %s -n %s%s"%(self.basepath,self._prefix,name)
         print cmd
@@ -440,7 +426,6 @@ ipaddr=
 
     def networkSet(self, machinename,netname="pub0",pubips=[],bridge="public",gateway=None):
         bridge=bridge.lower()
-        self._init()
         print "set pub network %s on %s" %(pubips,machinename)
         machine_cfg_file = j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, machinename), 'config')
         machine_ovs_file = j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, machinename), 'ovsbr_%s'%bridge)
