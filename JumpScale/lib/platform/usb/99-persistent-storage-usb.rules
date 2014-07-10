@@ -1,0 +1,23 @@
+
+# Specify the CLOUDDISK label
+
+#GOTO persistent_storage_end if USB Mass Storage Device attached on ENV startup
+ACTION=="add", ENV{STARTUP}=="1", GOTO="persistent_storage_end"
+
+#GOTO persistent_storage_add_change if USB Mass Storage Device attached
+ACTION=="add", SUBSYSTEMS=="usb", GOTO="persistent_storage_add"
+
+#GOTO persistent_storage_remove if USB Mass Storage Device detached
+ACTION=="remove", SUBSYSTEMS=="usb", GOTO="persistent_storage_remove"
+
+#Any other action shouldn't be dealt with 
+ACTION!="*", SUBSYSTEMS=="usb", GOTO="persistent_storage_end"
+
+LABEL="persistent_storage_add"
+KERNEL=="sd[a-z]|sr*", SUBSYSTEMS=="usb", ACTION=="add", RUN+="/bin/sh -c '/opt/qbase5/lib/pylabs/extensions/baseworking/usb/cmdtools/addUSB.sh -d $env{DEVNAME}'"
+
+LABEL="persistent_storage_remove"
+# Clean up after USB removal
+KERNEL=="sd[a-z]|sr*", SUBSYSTEMS=="usb", ACTION=="remove", RUN+="/bin/sh -c '/opt/qbase5/lib/pylabs/extensions/baseworking/usb/cmdtools/removeUSB.sh -d $env{DEVNAME}'"
+
+LABEL="persistent_storage_end"
