@@ -273,6 +273,9 @@ class TxtRobot():
                 cmdblock=""
                 cmd=""                
 
+            if line.find("******")<>-1:
+                break #end of message
+
             #DEAL WITH SNIPPET CREATE CMD
             if line.find("!snippet.create")==0:
                 remainder=line.split("!snippet.create",1)[1]
