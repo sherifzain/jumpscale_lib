@@ -13,6 +13,11 @@ initcmds="""
 project (proj,p)
 - list (l)
 - refresh (r)
+- new (n)
+-- id
+-- name
+-- description
+-- lead
 
 user (u)
 - list (l)
@@ -20,7 +25,16 @@ user (u)
 - alias
 - new (n)
 -- name
+-- fullname
 -- email
+-- upasswd
+-- alias
+-- jabber
+
+group (g)
+- new (n)
+-- name
+-- role
 
 story (issue,bug)
 - list (l)
@@ -134,13 +148,58 @@ class YouTrackRobotCmds():
             self.txtrobot.redis.hset("youtrack:project",pname.lower(),data)
         return "Refresh OK"
 
+
+    def project__new(self,**args):
+        client=self.getClient(args)
+        if self.txtrobot.redis.hexists("youtrack:project",args["name"].lower()):
+            OUT="**WARNING: Project existed"
+            return OUT
+        else:
+            self.txtrobot.redis.hexists("youtrack:project",args["name"].lower())
+            result=client.createProjectDetailed(args["id"], args["name"], args["description"], args["lead"])
+            self.project__refresh(**args)
+
+
+    def group__new(self,**args):
+        client=self.getClient(args)
+
+        if not args["name"].lower() in [str(item["name"]).lower() for item in client.getGroups()]:
+            client.createGroup(args["name"])
+        if args.has_key("role"):
+            for role in args["role"].split(","):
+                if role.strip()<>"":
+                    raise RuntimeError("E:role param not supported yet")
+                    roles=[str(item["name"]) for item in client.getRoles() if str(item["name"]).lower()==role.lower().strip()]
+                    if len(roles)==1:
+                        role=roles[0]
+                    else:
+                        raise RuntimeError("E:Cannot find role:%s"%role)
+
+                    result=client.addUserRoleToGroup(args["name"],role.strip())
+                    
     def user__new(self,**args):
         client=self.getClient(args)
-        client.createUserDetailed(args["name"],args["fullname"],args["email"],args["jabber"])        
-        from IPython import embed
-        print "DEBUG NOW ooo"
-        embed()
+        if args["email"].find(",")<>-1:
+            args["email"]=args["email"].split(",")[0].strip()
         
+        result= client.createUserDetailed(args["name"],args["fullname"],args["email"],args["jabber"],args["upasswd"])
+        if not result[0]["status"]=='200':
+            raise RuntimeError("E:Could not create user")
+
+        for gr in args["groups"].split(","):
+            if gr.strip()<>"":
+                groups=[str(item["name"]) for item in client.getGroups() if str(item["name"]).lower()==gr.lower().strip()]
+                if len(groups)==1:
+                    gr=groups[0]
+                else:
+                    raise RuntimeError("E:Cannot find group:%s"%gr)
+
+                result=client.setUserGroup(args["name"],gr)
+                if not result["status"]=='200':
+                    raise RuntimeError("E:Could not create group:%s"%gr)
+
+        return "OK"
+
 
     def user__refresh(self,**args):
         client=self.getClient(args)

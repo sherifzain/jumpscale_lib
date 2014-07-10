@@ -276,14 +276,18 @@ class Connection(object):
         # self.createUserDetailed(user.login, user.fullName, user.email, user.jabber)
         self.importUsers([user])
 
-    def createUserDetailed(self, login, fullName, email, jabber):
-        print self.importUsers([{'login': login, 'fullName': fullName, 'email': email, 'jabber': jabber}])
+    def createUserDetailed(self, login, fullName, email, jabber,passwd):
+        # print self.importUsers([{'login': login, 'fullName': fullName, 'email': email, 'jabber': jabber}])
+        params = {'login': login,
+                  'fullName': fullName,
+                  'email': email,
+                  'jabber': jabber,
+                  'passwd': passwd
+                  }        
 
-    #        return self._put('/admin/user/' + login + '?' +
-    #                         'password=' + password +
-    #                         '&fullName=' + fullName +
-    #                         '&email=' + email +
-    #                         '&jabber=' + jabber)
+        paramsurl=urllib.urlencode(params)
+        
+        return self._req('POST', '/admin/user?%s'% paramsurl)
 
 
     def importUsers(self, users):
@@ -492,14 +496,15 @@ class Connection(object):
 
     def createGroup(self, group):
         content = self._put(
-            '/admin/group/%s?autoJoin=false' % group.name.replace(' ', '%20'))
+            '/admin/group/%s?autoJoin=false' % group.replace(' ', '%20'))
         return content
 
     def addUserRoleToGroup(self, group, userRole):
-        url_group_name = urlquote(utf8encode(group.name))
-        url_role_name = urlquote(utf8encode(userRole.name))
-        response, content = self._req('PUT', '/admin/group/%s/role/%s' % (url_group_name, url_role_name),
-            body=userRole.toXml())
+        # url_group_name = urlquote(utf8encode(group.name))
+        # url_role_name = urlquote(utf8encode(userRole.name))
+        group=group.replace(' ', '%20')
+        url='/admin/group/%s/role/%s' % (urlquote(utf8encode(group)), urlquote(utf8encode(userRole)))
+        response, content = self._req('GET', url)
         return content
 
     def getRole(self, name):
@@ -629,31 +634,6 @@ class Connection(object):
                                            'lead': projectLeadLogin,
                                            'startingNumber': str(startingNumber)}))
 
-    # TODO this function is deprecated
-    def createSubsystems(self, projectId, subsystems):
-        """ Accepts result of getSubsystems()
-        """
-
-        for s in subsystems:
-            self.createSubsystem(projectId, s)
-
-    # TODO this function is deprecated
-    def createSubsystem(self, projectId, s):
-        return self.createSubsystemDetailed(projectId, s.name, s.isDefault,
-            s.defaultAssignee if s.defaultAssignee != '<no user>' else '')
-
-    # TODO this function is deprecated
-    def createSubsystemDetailed(self, projectId, name, isDefault, defaultAssigneeLogin):
-        self._put('/admin/project/' + projectId + '/subsystem/' + urlquote(name.encode('utf-8')) + "?" +
-                  urllib.urlencode({'isDefault': str(isDefault),
-                                    'defaultAssignee': defaultAssigneeLogin}))
-
-        return 'Created'
-
-    # TODO this function is deprecated
-    def deleteSubsystem(self, projectId, name):
-        return self._reqXml('DELETE', '/admin/project/' + projectId + '/subsystem/' + urlquote(name.encode('utf-8'))
-            , '')
 
     # TODO this function is deprecated
     def createVersions(self, projectId, versions):
