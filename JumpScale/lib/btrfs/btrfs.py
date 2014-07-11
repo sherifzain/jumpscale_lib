@@ -28,6 +28,14 @@ class BtrfsExtension(object):
             raise RuntimeError(err)
         
         return out
+
+
+    def snapshotReadOnlyCreate(self, path, dest):
+        """
+        Create a readonly snapshot 
+        """
+        self.__btrfs("subvolume", "snapshot -r", path, dest)
+        
     
     def subvolumeCreate(self, path, name):
         """
