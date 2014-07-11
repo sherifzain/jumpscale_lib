@@ -2,6 +2,7 @@ from JumpScale import j
 import yaml
 import JumpScale.baselib.hash
 from TxtRobotHelp import TxtRobotHelp
+import JumpScale.baselib.mailclient
 
 import JumpScale.baselib.redis
 import copy
@@ -344,6 +345,17 @@ class TxtRobot():
 
         while out.find("\n\n\n")<>-1:
             out=out.replace("\n\n\n","\n\n")
+
+        if gargs.has_key("mail_from"):
+            ffrom=gargs["mail_from"]
+            subject=gargs["mail_subject"]
+            mail_robot=gargs["mail_robot"]
+            out2=""
+            for line in out.split("\n"):
+                if line.find("@mail_")==0:
+                    continue
+                out2+="%s\n"%line            
+            j.clients.email.send([ffrom], mail_robot, subject, out2)
 
         return out
 

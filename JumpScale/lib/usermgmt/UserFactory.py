@@ -86,6 +86,8 @@ id.skype=
 id.bitbucket.login=
 id.linkedin=
 id.jabber=
+id.dropbox=
+id.gmail=
 id.key.dsa.pub=
 
 """         
@@ -144,14 +146,25 @@ id.key.dsa.pub=
         res=do("jabber","id.jabber",user,args,die=False)
         res=do("upasswd","id.passwd",user,args,die=False)
         res=do("gmail","id.gmail",user,args,die=False)
+        res=do("dropbox","id.dropbox",user,args,die=False)
         res=do("dsakey","id.key.dsa.pub",user,args,die=False)
 
+        if args.has_key("checkonly"):
+            return
+
         for check in ["id.alias","id.company","id.email","id.mobile","id.skype","id.bitbucket.login","id.linkedin"\
-                ,"id.jabber","id.key.dsa.pub","id.firstname","id.lastname","id.gmail","id.upasswd"]:
+                ,"id.jabber","id.key.dsa.pub","id.firstname","id.lastname","id.gmail","id.passwd","id.dropbox"]:
             if not user.exists(check):
                 user.set(check,"")
-    
-        return 'User created successfully.'
+
+        if user.exists("id.upasswd"):
+            user.delete("id.upasswd")
+
+        userEmail,missing,msg=self.checkUser(user,send2user=False)
+        if userEmail<>"":
+            raise RuntimeError("E:missing arguments:'%s', complete and send again."%missing)
+        else:
+            return 'User created successfully.'
 
     def user__list(self, **args):
         result={}
@@ -189,7 +202,8 @@ id.key.dsa.pub=
             out+="linkedin=%s\n"%hrd.get("id.linkedin")
             out+="jabber=%s\n"%hrd.get("id.jabber")
             out+="gmail=%s\n"%hrd.get("id.gmail")
-            out+="dsakey=...\n%s\n...\n"%hrd.get("id.key.dsa.pub")
+            out+="dropbox=%s\n"%hrd.get("id.dropbox")
+            # out+="dsakey=...\n%s\n...\n"%hrd.get("id.key.dsa.pub")
             if len(keys)>1:
                 out+="\n########################################################\n"
         return out
@@ -205,30 +219,88 @@ id.key.dsa.pub=
         return out2
 
     def user__check(self,**args):
+        out3=""
         for path in j.system.fs.listFilesInDir(self.path, recursive=True, filter="*.hrd"):
             hrd=j.core.hrd.getHRD(path)
             login=hrd.get("id.login").strip().lower()
-            self.user__new(ulogin=login)
-
+            self.user__new(ulogin=login,checkonly=True)
             hrd=j.core.hrd.getHRD(path)
+            userEmail,missing,msg=self.checkUser(hrd)
+            if userEmail<>"":
+                out3+="ERROR: '%s' %s\n"%(userEmail,missing)
 
-            ok=True
-            for check in ["id.alias","id.company","id.email","id.mobile","id.skype","id.bitbucket.login","id.linkedin",\
-                "id.jabber","id.key.dsa.pub","id.firstname","id.lastname","id.gmail","id.upasswd"]:
-                if not hrd.get(check)=="":
-                    ok=False
+        if out3<>"":
+            return out3
 
-            if ok==False:
-                recipients=["kristof@incubaid.com"]
-                sender="user@robot.vscalers.com"
-                subject="error in data of your user account, please fix."
-                message=self.user__get(ulogin=login)
-                j.clients.email.send(recipients, sender, subject, message, files=None)
-                from IPython import embed
-                print "DEBUG NOW uuu"
-                embed()
-                p
-                
+        return "OK"
+
+    def checkUser(self,userhrd,send2user=True):
+
+        missing=""
+        for check in ["id.alias","id.company","id.email","id.mobile","id.skype","id.bitbucket.login",\
+            "id.jabber","id.firstname","id.lastname","id.gmail"]:
+            if userhrd.get(check,default="")=="":
+                missing+="%s,"%check
+
+        missing=missing.strip(",")
+
+        if missing<>"":
+            # recipients=["kristof@incubaid.com"]
+            recipients=[userhrd.get("id.email").split(",")[0]]
+
+            login=userhrd.get("id.login").strip().lower()
+            
+            sender="user@robot.vscalers.com"
+            subject="error in data of your user account, please fix."
+            message=self.user__get(ulogin=login)
+            
+            message=j.tools.text.prefix(":*: ",message)
+
+            HELP="""
+*****************
+HELP
+*****************
+Please complete the form above.
+Missing arguments are: $missing
+
+id.firstname=
+id.lastname=
+id.login=   #YOUR OFFICIAL LOGIN and will already be filled in (is 7 letters last name, first letter firstname)
+id.alias=   #what are other names which can be used in e.g. tickets for you? your aliases, need to be unique over company.
+id.company= #mark all relevant companies (comma separated) e.g. mothership1,codescalers  
+id.role=    # shose one or more of: ceo,developer,teamlead,sales,syseng,supportl1,supportl2,supportl3,admin,legal,finance
+id.email=   #mark ALL YOUR EMAILS (comma separated), your primary one first
+id.mobile=  #mark all, again comma separated
+id.skype=
+id.bitbucket.login=
+id.linkedin= #if you have
+id.jabber=   #this is often same as your gmail acount
+id.gmail=    #your main gmail account which should be used to communicate when using google drive
+id.dropbox=  #your dropbox account
+
+the robot will keep on complaining untill all required fields are filled in
+
+just reply on this email and the robot will do the rest.
+
+"""
+            HELP=HELP.replace("$missing",missing)
+            message="%s\n\n%s\n"%(message,HELP)
+            
+            if send2user:
+                try:
+                    j.clients.email.send(recipients, sender, subject, message, files=None)
+                except Exception,e:             
+                    if str(e).find("Bad recipient")<>-1:       
+                        missing="EMAIL ADDRESS NOT PROPERLY FILLED IN: was:'%s'"%recipients[0]
+                        recipients[0]=login
+                    else:
+                        raise RuntimeError("E:error in sending mail:%s"%e)
+
+            return recipients[0],missing,message
+        return "","",""
+
+            
+            
 
 
 

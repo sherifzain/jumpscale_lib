@@ -40,11 +40,44 @@ class MailRobot(SMTPServer):
     def process_message(self, peer, mailfrom, rcpttos, data):
         gevent.spawn(self.green_message, peer, mailfrom, rcpttos, data)
 
-    def toFileRobot(self,robot,fromm,subject,msg):
-        from IPython import embed
-        print "DEBUG NOW ooo"
-        embed()
+    def processReply(self,msg):
+
+        return j.tools.text.prefix_remove_withtrailing(":*: ",msg,onlyPrefix=True)
+
+        # cmdfound=False
+        # reply=False
+        # out=""
+        # for line in msg.split("\n"):
+        #     if line.find("@mail_subject")==0 or line.find("@mail_from")==0:
+        #         out+="%s\n"%line
+        #     if line.find("!")==0:
+        #         cmdfound=True
+        #     if cmdfound:
+        #         if line.find("<user@robot.vscalers.com>")<>-1:
+        #             break
+        #         out+="%s\n"%line
+        #     if reply:
+        #         #start processing reply
+        #         if line.find("> ")==0:
+        #             line=line[2:]
+        #             out+="%s\n"%line
+        #         # if line.strip()=="":
+        #         else:
+        #             break
+
+        #     if cmdfound==False and line.find("<user@robot.vscalers.com>")<>-1:
+        #         reply=True
+
+        # return out
+
+
+    def toFileRobot(self,robot,fromm,subject,msg,html):
         
+        msg=msg.replace("=3D","=")
+        msg=msg.replace("=20","")
+        # msg=msg.replace("=\r\n","")
+
+
         out=""
         state="start"
         var=""
@@ -54,28 +87,31 @@ class MailRobot(SMTPServer):
                 state="in"
                 continue
 
-            if state=="in" and (line.find("<")==0 or line.find(">")==0 or line.find("--")==0):
+            if state=="in" and (line.find("> wrote:")<>-1 or line.find("<")==0 or \
+                line.find(">")==0 or line.find("--")==0 or line.find("***")==0):
                 break
 
             if state=="in":
                 out+="%s\n"%line
 
-        robotdir=j.system.fs.joinPaths(j.dirs.varDir, 'var', 'cloudrobot', 'templates',robot)
+        if len(out)>1 and out[-1]<>"\n":
+            out+="\n"
+
+        if msg.find("<user@robot.vscalers.com> wrote:")<>-1:
+            #means is a reply we need to process it
+            out+=self.processReply(msg)          
+
+        robotdir=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', robot)
         if not j.system.fs.exists(path=robotdir):
             output = 'Could not find robot on fs. Please make sure you are sending to the right one, \'youtrack\' & \'machine\' & \'user\' are supported.'
-            j.clients.email.send([mailfrom], "%s@%"%(robot,self.domain), subject, output)
+            j.clients.email.send(fromm, "%s@%s"%(robot,self.domain), subject, output)
+            print "COULD NOT FIND ROBOT ON %s"%robotdir
             return
 
         subject2=j.tools.text.toAscii(subject,80)
         fromm2=j.tools.text.toAscii(fromm)
-        j.system.fs.joinPaths(j.dirs.varDir, 'var', 'cloudrobot', robot,'in',"%s_%s.py"%(fromm2subject2))
-
-        from IPython import embed
-        print "DEBUG NOW ooo"
-        embed()
-        
-
-
+        path=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', robot,'in',"%s_%s.py"%(fromm2,subject2))
+        j.system.fs.writeFile(path,out)
 
 
     def green_message(self, peer, mailfrom, rcpttos, data):
@@ -85,51 +121,65 @@ class MailRobot(SMTPServer):
             print 'Received a message which is not going to be processed. Mail server does not match'
             return
         mailfrom = msg['From']
+        html=False
+
+        def do(msg_part):
+            if 'text/plain' in msg_part.get_content_type():
+                txt=msg_part.get_payload()
+                if txt[-1]<>"\n":
+                    txt="\n"
+
+            elif 'text/html' in msg_part.get_content_type():
+                html=True
+                txt=msg_part.get_payload()
+                if txt.find('"gmail_extra"')<>-1:
+                    return "C"
+                else:
+                    output="please only send txt commands to robot, we got html."
+                    j.clients.email.send([mailfrom], "%s@%s"%(robot_processor,self.domain), msg.get('subject'), output)                        
+                    return "S"
+            else:                    
+                from IPython import embed
+                print "DEBUG NOW othercontent type"
+                embed()
+                p
+            return txt
+
+        
         try:
+            robot_processor = msg['To'].split('@')[0]
             if msg.is_multipart():
                 msg_parts = msg.get_payload()
                 commands_str=""
                 for msg_part in msg_parts:
-                    if 'text/plain' in msg_part.get_content_type():
-                        commands_str+=msg_part.get_payload()
-                        commands_str+="\n"
-                        from IPython import embed
-                        print "DEBUG NOW uuu"
-                        embed()
-                        
-                    elif 'text/html' in msg_part.get_content_type():
-                        txt=msg_part.get_payload()
-                        if txt.find('"gmail_extra"')<>-1:
-                            continue
-                        else:
-                            output="please only send txt commands to robot, we got html."
-                            j.clients.email.send([mailfrom], "%s@%"%(robot_processor,self.domain), msg.get('subject'), output)                        
-                    else:                    
-                        from IPython import embed
-                        print "DEBUG NOW othercontent type"
-                        embed()
-                        p
+                    res=do(msg_part)
+                    if res=="C":
+                        continue
+                    elif res=="S":
+                        break
+                    commands_str+=res
                     
-                # ct2msg = dict([(msg_part.get_content_type(), msg_part) for msg_part in msg_parts])
-                # if 'text/plain' in ct2msg:
-                #     commands_str = ct2msg['text/plain'].get_payload()
-                # else:
-                #     for ct, msg_part in ct2msg.iteritems():
-                #         if 'text' in ct:
-                #             commands_str = self._html2text(msg_part.get_payload())
-                #             break
             else:
-                commands_str = msg.get_payload()            
+                res=do(msg)
+                if res=="S":
+                    return
+                if res=="C":                    
+                    output="please only send txt commands to robot, we got html."
+                    j.clients.email.send([mailfrom], "%s@%s"%(robot_processor,self.domain), msg.get('subject'), output)                        
+                    return
+                commands_str = res
 
             print "Processing message from %s"  % msg['From']
-            output = ''
-            robot_processor = msg['To'].split('@')[0]
+            output = ''            
             if not self.robots.has_key(robot_processor):
                 output = 'Could not match any robot. Please make sure you are sending to the right one, \'youtrack\' & \'machine\' are supported.'            
-                j.clients.email.send([mailfrom], "%s@%"%(robot_processor,self.domain), msg.get('subject'), output)
+                j.clients.email.send([mailfrom], "%s@%s"%(robot_processor,self.domain), msg.get('subject'), output)
+                return
             else:
-                commands_str="@mail_subject=%s\n@mail_from=%s\n%s"%(mailfrom,msg.get('subject'),commands_str)
-                self.toFileRobot(robot_processor,mailfrom,msg.get('subject'),commands_str)
+                mail_robot="%s@%s"%(robot_processor,self.domain)
+                commands_str="@mail_subject=%s\n@mail_from=%s\n@mail_robot=%s\n%s"%(msg.get('subject'),mailfrom,\
+                    mail_robot,commands_str)
+                self.toFileRobot(robot_processor,mailfrom,msg.get('subject'),commands_str,html)
 
         except Exception,e:
             print j.errorconditionhandler.parsePythonErrorObject(e)            
