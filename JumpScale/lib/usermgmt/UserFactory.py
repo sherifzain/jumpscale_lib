@@ -6,36 +6,35 @@ import JumpScale.baselib.mailclient
 
 robotdefinition="""
 
-
-####
-global required variables
-login=
-passwd=
-
 user (u)
 - list (l)
 -- company #optional
+
 - new (n)
 -- firstname
 -- lastname
--- ulogin       #7 last letters of lastname, first letter of firstname (if not give then calculated)
+-- ulogin           #7 last letters of lastname, first letter of firstname (if not give then calculated)
 -- upasswd
--- company      #comma separated 
--- email        #comma separated list (most relevant email first)
--- alias        #comma separated
--- jabber       #is e.g. main gmail email name 
--- mobile       #comma separated
+-- company          #comma separated 
+-- email            #comma separated list (most relevant email first)
+-- alias            #comma separated
+-- jabber           #is e.g. main gmail email name 
+-- mobile           #comma separated
 -- skype
--- role         #ceo,developer,teamlead,sales,syseng,supportl1,supportl2,supportl3,admin,legal,finance (mark all)
+-- role             #ceo,developer,teamlead,sales,syseng,supportl1,supportl2,supportl3,admin,legal,finance (mark all)
 -- bitbucketlogin   #login on bitbucket
 -- linkedin         #id on linkedin
 -- dsakey           #key for sshaccess (pub)
--- gmail        #main gmail account, if not filled in will take first email add
+-- gmail            #main gmail account, if not filled in will take first email add
+-- dropbox
+
 - get (g)
 -- ulogin
+
 - passwd
 -- ulogin
 -- upassd
+
 - check (c)
 
 """

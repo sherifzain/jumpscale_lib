@@ -23,9 +23,12 @@ class MailRobot(SMTPServer):
         SMTPServer.__init__(self, *args, **kwargs)
         self.domain=j.application.config.get("mailrobot.mailserver")
         self.robots={}    
-        self.mailserver = j.application.config.get('mailrobot.mailserver')   
+        self.mailserver = j.application.config.get('mailrobot.mailserver')
+        self.archivefolder="%s/mailarchive/in"%j.dirs.varDir
+        j.system.fs.createDir(self.archivefolder)
 
     def _html2text(self, html):
+        path=self.archivefolder
         from IPython import embed
         print "DEBUG NOW id"
         embed()
@@ -117,19 +120,35 @@ class MailRobot(SMTPServer):
     def green_message(self, peer, mailfrom, rcpttos, data):
         
         msg = self.emailparser.parsestr(data)
-        if self.mailserver not in msg['To'].split('@')[1]:
+        tto=[item.strip().lower() for item in msg['To'].split(",")]
+        ttostr=msg['To'].lower()
+
+        #custom config does not belong here, will have to remove later
+        if 'smtp@robot.vscalers.com' in tto or \
+            (msg['Received'].find("<smtp@robot.vscalers.com>")<>-1 and msg['Received'].find("google.com")<>-1):
+            subject2=j.tools.text.toAscii(msg["subject"],40)
+            fromm2=j.tools.text.toAscii(mailfrom,30)
+            name="%s_%s_%s_%s"%(j.base.time.getTimeEpoch(),j.base.time.getLocalTimeHRForFilesystem(),fromm2,subject2)
+            path=j.system.fs.joinPaths(self.archivefolder,name)
+            print "archive:%s"%name
+            j.system.fs.writeFile(path,msg.as_string())            
+            return
+
+        if "@%s"%self.mailserver not in ttostr:
             print 'Received a message which is not going to be processed. Mail server does not match'
             return
         mailfrom = msg['From']
         html=False
 
+
         def do(msg_part):
-            if 'text/plain' in msg_part.get_content_type():
+            contenttype=msg_part.get_content_type()
+            if 'text/plain' in contenttype:
                 txt=msg_part.get_payload()
                 if txt[-1]<>"\n":
                     txt="\n"
 
-            elif 'text/html' in msg_part.get_content_type():
+            elif 'text/html' in contenttype:
                 html=True
                 txt=msg_part.get_payload()
                 if txt.find('"gmail_extra"')<>-1:
@@ -138,11 +157,6 @@ class MailRobot(SMTPServer):
                     output="please only send txt commands to robot, we got html."
                     j.clients.email.send([mailfrom], "%s@%s"%(robot_processor,self.domain), msg.get('subject'), output)                        
                     return "S"
-            else:                    
-                from IPython import embed
-                print "DEBUG NOW othercontent type"
-                embed()
-                p
             return txt
 
         
