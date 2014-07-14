@@ -74,35 +74,54 @@ class MailRobot(SMTPServer):
         # return out
 
 
-    def toFileRobot(self,robot,fromm,subject,msg,html):
+    def toFileRobot(self,robot,fromm,subject,msg,html,addcommands=""):
         
         msg=msg.replace("=3D","=")
         msg=msg.replace("=20","")
         # msg=msg.replace("=\r\n","")
 
 
+        def findNonReply(msg):
+            out=""
+            state="start"
+            var=""
+            for line in msg.split("\n"):
+                if state=="start" and (line.find("=")<>-1 or line.find("@")==0 or line.find("!")==0 or line.find("#")==0):
+                    out+="%s\n"%line
+                    state="in"
+                    continue
+
+                if state=="start" and (line.find("> wrote:")<>-1 or \
+                    line.find("> ")==0 or line.find("--")==0 or line.find("***")==0):
+                    break
+
+                if state=="in" and (line.find("> wrote:")<>-1 or line.find("<")==0 or \
+                    line.find(">")==0 or line.find("--")==0 or line.find("***")==0):
+                    break
+
+                if state=="in":
+                    out+="%s\n"%line
+
+            if len(out)>1 and out[-1]<>"\n":
+                out+="\n"
+
+            return out
+        # or msg.find("<user@robot.vscalers.com> wrote:")<>-1
+        
         out=""
-        state="start"
-        var=""
-        for line in msg.split("\n"):
-            if state=="start" and (line.find("=")<>-1 or line.find("@")==0 or line.find("!")==0 or line.find("#")==0):
-                out+="%s\n"%line
-                state="in"
-                continue
 
-            if state=="in" and (line.find("> wrote:")<>-1 or line.find("<")==0 or \
-                line.find(">")==0 or line.find("--")==0 or line.find("***")==0):
-                break
-
-            if state=="in":
-                out+="%s\n"%line
-
-        if len(out)>1 and out[-1]<>"\n":
-            out+="\n"
-
-        if msg.find("<user@robot.vscalers.com> wrote:")<>-1:
+        if msg.find(":*: ")<>-1:
             #means is a reply we need to process it
-            out+=self.processReply(msg)          
+            out=self.processReply(msg)
+
+        if out=="":
+            out=findNonReply(msg)
+
+        if out.strip()=="":
+            output = 'E:Robot could not find instructions.'
+            j.clients.email.send(fromm, "%s@%s"%(robot,self.domain), subject, output)   
+
+        out="%s\n%s"%(addcommands,out)
 
         robotdir=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', robot)
         if not j.system.fs.exists(path=robotdir):
@@ -126,7 +145,7 @@ class MailRobot(SMTPServer):
         #custom config does not belong here, will have to remove later
         if 'smtp@robot.vscalers.com' in tto or \
             (msg['Received'].find("<smtp@robot.vscalers.com>")<>-1 and msg['Received'].find("google.com")<>-1):
-            subject2=j.tools.text.toAscii(msg["subject"],40)
+            subject2=j.tools.text.toAscii(msg["subject"],40).replace("/","_").replace("\\","_").replace("?","_")
             fromm2=j.tools.text.toAscii(mailfrom,30)
             name="%s_%s_%s_%s"%(j.base.time.getTimeEpoch(),j.base.time.getLocalTimeHRForFilesystem(),fromm2,subject2)
             path=j.system.fs.joinPaths(self.archivefolder,name)
@@ -191,9 +210,9 @@ class MailRobot(SMTPServer):
                 return
             else:
                 mail_robot="%s@%s"%(robot_processor,self.domain)
-                commands_str="@mail_subject=%s\n@mail_from=%s\n@mail_robot=%s\n%s"%(msg.get('subject'),mailfrom,\
-                    mail_robot,commands_str)
-                self.toFileRobot(robot_processor,mailfrom,msg.get('subject'),commands_str,html)
+                commands_str_add="@mail_subject=%s\n@mail_from=%s\n@mail_robot=%s\n"%(msg.get('subject'),mailfrom,\
+                    mail_robot)
+                self.toFileRobot(robot_processor,mailfrom,msg.get('subject'),commands_str,html,addcommands=commands_str_add)
 
         except Exception,e:
             print j.errorconditionhandler.parsePythonErrorObject(e)            

@@ -56,7 +56,7 @@ class TxtRobot():
             if line[0]=="#":
                 continue
 
-            if line.find("###")<>-1:
+            if line.find("****")<>-1:
                 break
 
             if line[0]<>"-":
@@ -245,6 +245,8 @@ class TxtRobot():
 
         gargs={}
 
+        cmdfound=False
+
         for line in splitted:
             # print "process:%s"%line
             line=line.strip()
@@ -270,7 +272,8 @@ class TxtRobot():
 
             if cmd<>"" and (line[0]=="!" or line[0]=="@" or line.find("******")<>-1):
                 #end of cmd block                
-                out+=self.processCmd(cmdblock,entity, cmd, args,gargs)
+                cmdfound=True
+                out+=self.processCmd(cmdblock,entity, cmd, args,gargs)                
                 cmdblock=""
                 cmd=""                
 
@@ -333,7 +336,8 @@ class TxtRobot():
                 args[name]=data.strip().replace("\\n","\n")
 
         if cmd<>"":
-            #end of cmd block                
+            #end of cmd block
+            cmdfound=True                
             out+=self.processCmd(cmdblock,entity, cmd, args,gargs)
 
         out=out.strip()+"\n"
@@ -345,6 +349,9 @@ class TxtRobot():
 
         while out.find("\n\n\n")<>-1:
             out=out.replace("\n\n\n","\n\n")
+
+        if cmdfound==False:    
+            out+= self.responseError("\n","Did not find a command to execute.")
 
         if gargs.has_key("mail_from"):
             ffrom=gargs["mail_from"]
@@ -379,9 +386,15 @@ class TxtRobot():
                     result=method(**args)
                 except Exception,e:
                     if str(e).find("E:")==0:
-                        j.errorconditionhandler.processPythonExceptionObject(e)
+                        # j.errorconditionhandler.processPythonExceptionObject(e)
                         e=str(e)[2:]
+                        print e
                         return self.responseError(cmdblock,"Cannot execute: '%s':'%s'\n%s"%(entity,cmd,e))
+                    elif str(e).find("F:")==0:
+                        # j.errorconditionhandler.processPythonExceptionObject(e)
+                        e=str(e)[2:]
+                        print e                        
+                        return self.responseError(e,"Cannot execute: '%s':'%s'\n"%(entity,cmd))
                     else:
                         j.errorconditionhandler.processPythonExceptionObject(e)
                     return self.responseError(cmdblock,"Cannot execute: '%s':'%s' , could not execute code, error."%(entity,cmd))

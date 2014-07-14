@@ -19,10 +19,15 @@ project (proj,p)
 -- description
 -- lead
 
+##############################################
+
 user (u)
 - list (l)
 - refresh (r)
 - alias
+-- name
+-- alias #comma separated when more than 1 alias
+
 - new (n)
 -- name
 -- fullname
@@ -31,10 +36,14 @@ user (u)
 -- alias
 -- jabber
 
+##############################################
+
 group (g)
 - new (n)
 -- name
 -- role
+
+##############################################
 
 story (issue,bug)
 - list (l)
@@ -83,7 +92,7 @@ story (issue,bug)
 -- parent #parent of this task
 
 
-#####
+*****************************************
 priorities:
   Show-stopper:4
   Critical:3
@@ -222,6 +231,7 @@ class YouTrackRobotCmds():
     def user__alias(self,**args):
         for alias in args["alias"].split(","):
             if alias.strip()<>"":
+                alias=alias.lower()
                 self.txtrobot.redis.hset("youtrack:useralias",alias,args["name"])
         return "OK"
 
@@ -232,6 +242,9 @@ class YouTrackRobotCmds():
         return json.loads(data)
 
     def _getUser(self,name):
+        if self.txtrobot.redis.hexists("youtrack:useralias",name):
+            name=self.txtrobot.redis.hget("youtrack:useralias",name)
+
         data=self.txtrobot.redis.hget("youtrack:user",name.lower())
         if data==None:
             return None

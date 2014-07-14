@@ -51,6 +51,26 @@ class UserFactory(object):
 class UserCmds():
     def __init__(self):
         self.path="/opt/code/incubaid/default__identities/identities/"
+        self.aliasses={}
+        self.aliasses["alias"]="id.alias"
+        self.aliasses["company"]="id.company"
+        self.aliasses["email"]="id.email"
+        self.aliasses["mobile"]="id.mobile"
+        self.aliasses["skype"]="id.skype"
+        self.aliasses["bitbucket"]="id.bitbucket.login"
+        self.aliasses["linkedin"]="id.linkedin"
+        self.aliasses["jabber"]="id.jabber"
+        self.aliasses["dsakey"]="id.key.dsa.pub"
+        self.aliasses["firstname"]="id.firstname"
+        self.aliasses["lastname"]="id.lastname"
+        self.aliasses["gmail"]="id.gmail"
+        self.aliasses["upasswd"]="id.passwd"
+        self.aliasses["ulogin"]="id.login"
+        self.aliasses["dropbox"]="id.dropbox"
+        self.aliassesR={}
+        for key,val in self.aliasses.iteritems():
+            self.aliassesR[val]=key
+
         
 
     def findUser(self,login,failIfNotExist=True):
@@ -103,13 +123,15 @@ id.key.dsa.pub=
             user=self.findUser(args["ulogin"])
 
 
-        def do(argname,hrdname,user,args,extracheck=None,help="",die=True):
+        def do(argname,hrdname,user,args,extracheck=None,help="",die=True,lower=False):
             if args.has_key(argname) and not args[argname].strip()=="":
                 val=args[argname]
                 if extracheck<>None:
                     res=extracheck(val)
                     if res<>"":
                         raise RuntimeError("E:Could not validate:%s, %s"%(argname,res))
+                if lower:
+                    val=val.lower().strip()
                 user.set(hrdname,val)
             res=user.get(hrdname,default="")
             if res=="":
@@ -136,15 +158,15 @@ id.key.dsa.pub=
         user.delete("id.name")
 
         res=do("bitbucketlogin","id.bitbucket.login",user,args,die=False)
-        res=do("alias","id.alias",user,args,die=False)
-        res=do("company","id.company",user,args,die=False)
-        res=do("email","id.email",user,args,die=False)
+        res=do("alias","id.alias",user,args,die=False,lower=True)
+        res=do("company","id.company",user,args,die=False,lower=True)
+        res=do("email","id.email",user,args,die=False,lower=True)
         res=do("mobile","id.mobile",user,args,die=False)
         res=do("skype","id.skype",user,args,die=False)
-        res=do("linkedin","id.linkedin",user,args,die=False)
+        res=do("linkedin","id.linkedin",user,args,die=False,lower=True)
         res=do("jabber","id.jabber",user,args,die=False)
         res=do("upasswd","id.passwd",user,args,die=False)
-        res=do("gmail","id.gmail",user,args,die=False)
+        res=do("gmail","id.gmail",user,args,die=False,lower=True)
         res=do("dropbox","id.dropbox",user,args,die=False)
         res=do("dsakey","id.key.dsa.pub",user,args,die=False)
 
@@ -161,7 +183,7 @@ id.key.dsa.pub=
 
         userEmail,missing,msg=self.checkUser(user,send2user=False)
         if userEmail<>"":
-            raise RuntimeError("E:missing arguments:'%s', complete and send again."%missing)
+            raise RuntimeError("F:\n%s\n"%(msg))
         else:
             return 'User created successfully.'
 
@@ -239,7 +261,8 @@ id.key.dsa.pub=
         for check in ["id.alias","id.company","id.email","id.mobile","id.skype","id.bitbucket.login",\
             "id.jabber","id.firstname","id.lastname","id.gmail"]:
             if userhrd.get(check,default="")=="":
-                missing+="%s,"%check
+                check2=self.aliassesR[check]
+                missing+="%s,"%check2
 
         missing=missing.strip(",")
 
