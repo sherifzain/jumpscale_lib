@@ -226,6 +226,10 @@ class YouTrackRobotCmds():
             data=json.dumps(user2)
             self.txtrobot.redis.hset("youtrack:user",user2["login"].lower(),data)
             self.txtrobot.redis.hset("youtrack:user",user2["name"].lower(),data)
+        from IPython import embed
+        print "DEBUG NOW user refresh"
+        embed()
+        
         return "Refresh OK"
 
     def user__alias(self,**args):
@@ -463,145 +467,166 @@ class YouTrackRobotCmds():
         
     def story__create(self,**args):
         client=self.getClient(args)
-        
-        proj=self._getProject(args["project"])
-        if proj==None:
-            raise RuntimeError("E:Could not find project:'%s'"%args["project"])
 
-        issues=client.getIssues(proj["id"],"summary: \"%s\""%args["name"],0,100)
+        if args.has_key("who") and args["who"].find(",")<>-1:
+            from IPython import embed
+            print "DEBUG NOW id"
+            embed()
+            first=""
+            for who in args["who"].split(","):
+                if first=="":
+                    first=who
+                args2=copy.copy(args)
+                args2["who"]=who
+                result=self.story__create(**args2)
+                from IPython import embed
+                print "DEBUG NOW ooo"
+                embed()
+                
 
-        if len(issues)>1:
-            raise RuntimeError("E:Found more than 1 story with samen name:%s"%args["name"])
-        elif len(issues)==1:
-            issue=issues[0]
-            if not args.has_key("prio"):
-                args["prio"]= 1
-            else:
-                args["prio"]= int(args["prio"])
-
-            if int(args["prio"])>4:
-                args["prio"]=4
-
-            if not args.has_key("who"):
-                args["who"]= proj["lead"]
-            user=self._getUser(args["who"])
-            if user==None:
-                raise RuntimeError("E:Could not find user:'%s'"%args["who"])
-            who=user["login"]
-
-            if not args.has_key("descr"):
-                args["descr"]= ""
-
-            result=client.updateIssue(issue.id,summary=args["name"],description=args["descr"])
-
-            client.executeCommand(issue.id,"Assignee %s"%args["who"],"") 
-
-            
-            # if len(issue.getAttachments())>0:
-            #     raise RuntimeError(E:Cannot update the story, there are attachments, not supported")
-
-            # if not args.has_key("prio"):
-            #     args["prio"]= self._prioNameToId(issue.Priority)
-            # else:
-            #     args["prio"]= int(args["prio"])
-
-            # if int(args["prio"])>4:
-            #     args["prio"]=4
-
-            # if issue.__dict__.has_key('Fix versions'):
-            #     fv=issue.__dict__['Fix versions']
-            # else:
-            #     fv=[]
-
-            # if not args.has_key("who"):
-            #     if issue.__dict__.has_key('Assignee'):
-            #         who= issue.Assignee
-            #     else:
-            #         user=self._getUser(proj["lead"])
-            #         if user==None:
-            #             raise RuntimeError("E:Could not find user:'%s'"%proj["lead"]
-            #         who=user["login"]
-            # else:
-            #     user=self._getUser(args["who"])
-            #     if user==None:
-            #         raise RuntimeError("E:Could not find user:'%s'"%args["who"])
-            #     who=user["login"]
-           
-            # if not args.has_key("descr"):
-            #     if not issue.__dict__.has_key('description'):
-            #         args["descr"]=""
-            #     else:
-            #         args["descr"]=issue.description                
-
-            # args["descr"]=args["descr"].replace("\\n","\n")
-
-            # data = {'numberInProject':str(int(issue.numberInProject)),
-            #             'summary':issue.summary,
-            #             'description':args["descr"],
-            #             'priority':str(args["prio"]),
-            #             'fixedVersion':fv,
-            #             'type':issue.Type,
-            #             'state':issue.State,
-            #             'created':str(issue.created),
-            #             'reporterName': issue.reporterName,
-            #             'assigneeName':who}
-
-
-            # links=issue.getLinks()
-            # comments=issue.getComments()
-
-            # client.deleteIssue(issue.id)
-
-            # result =client.importIssues(proj["id"],"Developers",[data])
-            # client.importLinks(links)
-
-            # for comment in comments:
-            #     client.executeCommand(issue.id,"comment",comment.text)
-
-            idd=issue.id
-
-            msg="Issue updated with id:%s"%idd
-
+            story__create
         else:
-            if not args.has_key("prio"):
-                args["prio"]= 1
+                            
+            proj=self._getProject(args["project"])
+            if proj==None:
+                raise RuntimeError("E:Could not find project:'%s'"%args["project"])
+
+            issues=client.getIssues(proj["id"],"summary: \"%s\""%args["name"],0,100)
+
+            if len(issues)>1:
+                raise RuntimeError("E:Found more than 1 story with samen name:%s"%args["name"])
+            elif len(issues)==1:
+                issue=issues[0]
+                if not args.has_key("prio"):
+                    args["prio"]= 1
+                else:
+                    args["prio"]= int(args["prio"])
+
+                if int(args["prio"])>4:
+                    args["prio"]=4
+
+                if not args.has_key("who"):
+                    args["who"]= proj["lead"]
+                user=self._getUser(args["who"])
+                if user==None:
+                    raise RuntimeError("E:Could not find user:'%s'"%args["who"])
+                who=user["login"]
+
+                if not args.has_key("descr"):
+                    args["descr"]= ""
+
+                result=client.updateIssue(issue.id,summary=args["name"],description=args["descr"])
+
+                client.executeCommand(issue.id,"Assignee %s"%args["who"],"") 
+
+            
+                # if len(issue.getAttachments())>0:
+                #     raise RuntimeError(E:Cannot update the story, there are attachments, not supported")
+
+                # if not args.has_key("prio"):
+                #     args["prio"]= self._prioNameToId(issue.Priority)
+                # else:
+                #     args["prio"]= int(args["prio"])
+
+                # if int(args["prio"])>4:
+                #     args["prio"]=4
+
+                # if issue.__dict__.has_key('Fix versions'):
+                #     fv=issue.__dict__['Fix versions']
+                # else:
+                #     fv=[]
+
+                # if not args.has_key("who"):
+                #     if issue.__dict__.has_key('Assignee'):
+                #         who= issue.Assignee
+                #     else:
+                #         user=self._getUser(proj["lead"])
+                #         if user==None:
+                #             raise RuntimeError("E:Could not find user:'%s'"%proj["lead"]
+                #         who=user["login"]
+                # else:
+                #     user=self._getUser(args["who"])
+                #     if user==None:
+                #         raise RuntimeError("E:Could not find user:'%s'"%args["who"])
+                #     who=user["login"]
+               
+                # if not args.has_key("descr"):
+                #     if not issue.__dict__.has_key('description'):
+                #         args["descr"]=""
+                #     else:
+                #         args["descr"]=issue.description                
+
+                # args["descr"]=args["descr"].replace("\\n","\n")
+
+                # data = {'numberInProject':str(int(issue.numberInProject)),
+                #             'summary':issue.summary,
+                #             'description':args["descr"],
+                #             'priority':str(args["prio"]),
+                #             'fixedVersion':fv,
+                #             'type':issue.Type,
+                #             'state':issue.State,
+                #             'created':str(issue.created),
+                #             'reporterName': issue.reporterName,
+                #             'assigneeName':who}
+
+
+                # links=issue.getLinks()
+                # comments=issue.getComments()
+
+                # client.deleteIssue(issue.id)
+
+                # result =client.importIssues(proj["id"],"Developers",[data])
+                # client.importLinks(links)
+
+                # for comment in comments:
+                #     client.executeCommand(issue.id,"comment",comment.text)
+
+                idd=issue.id
+
+                msg="Issue updated with id:%s"%idd
+
             else:
-                args["prio"]= int(args["prio"])
+                if not args.has_key("prio"):
+                    args["prio"]= 1
+                else:
+                    args["prio"]= int(args["prio"])
 
-            if int(args["prio"])>4:
-                args["prio"]=4
+                if int(args["prio"])>4:
+                    args["prio"]=4
 
-            if not args.has_key("who"):
-                args["who"]= proj["lead"]
-            user=self._getUser(args["who"])
-            if user==None:
-                raise RuntimeError("E:Could not find user:'%s'"%args["who"])
-            who=user["login"]
+                if not args.has_key("who"):
+                    args["who"]= proj["lead"]
+                user=self._getUser(args["who"])
+                if user==None:
+                    raise RuntimeError("E:Could not find user:'%s'"%args["who"])
+                who=user["login"]
 
-            if not args.has_key("descr"):
-                args["descr"]= ""
-            
-            result=client.createIssue(project=args["project"],assignee=who,summary=args["name"],description=args["descr"],priority=args["prio"])
+                if not args.has_key("descr"):
+                    args["descr"]= ""
+                
+                result=client.createIssue(project=args["project"],assignee=who,summary=args["name"],description=args["descr"],priority=args["prio"])
 
-            idd=result.split("/")[-1]
+                idd=result.split("/")[-1]
 
-            if args.has_key("comment"):            
-                client.executeCommand(idd,"comment", args["comment"])
+                if args.has_key("comment"):            
+                    client.executeCommand(idd,"comment", args["comment"])
 
-            msg="Issue created with id:%s"%idd
+                msg="Issue created with id:'%s'"%idd
 
-        if args.has_key("parent"):            
-            args2=copy.copy(args)
-            if args2.has_key("id"):
-                args2.pop("id")
-            args2["name"]=args["parent"]            
-            parent=self._storiesGet(args2)
-            if len(parent)>1:
-                return "**ERROR**: CANNOT LINK TO MORE THAN 1 PARENT."
-            parent=parent[0]
-            client.executeCommand(idd,"subtask of %s"%parent.id)            
-
-            
+            if args.has_key("parent"):     
+                from IPython import embed
+                print "DEBUG NOW parent"
+                embed()
+                          
+                args2=copy.copy(args)
+                if args2.has_key("id"):
+                    args2.pop("id")
+                args2["name"]=args["parent"]            
+                parent=self._storiesGet(args2)
+                if len(parent)>1:
+                    return "**ERROR**: CANNOT LINK TO MORE THAN 1 PARENT."
+                parent=parent[0]
+                client.executeCommand(idd,"subtask of %s"%parent.id)            
 
         return msg
 

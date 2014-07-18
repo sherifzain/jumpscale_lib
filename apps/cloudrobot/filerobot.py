@@ -32,13 +32,14 @@ def findGlobal(C,name):
 while True:
     # channels=j.system.fs.listDirsInDir("data",False,True)
     for channel in robots.keys():
+        robots[channel].robots=robots
     # for channel in channels:
         for path in j.system.fs.listFilesInDir("%s/%s/in/"%(basepath,channel)):
             name0=j.system.fs.getBaseName(path).replace(".txt","")
             C=j.system.fs.fileGetContents(path)            
             name="%s_%s_%s_%s.txt"%(j.base.time.getTimeEpoch(),j.base.time.getLocalTimeHRForFilesystem(),name0,findGlobal(C,"source"))
             j.system.fs.writeFile("%s/%s/jobs/%s"%(basepath,channel,name),C)
-            print "PROCESS:%s"%path
+            print "PROCESS:%s"%path            
             result=robots[channel].process(C)
             j.system.fs.remove(path)
             

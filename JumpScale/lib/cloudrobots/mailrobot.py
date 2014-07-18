@@ -181,6 +181,9 @@ class MailRobot(SMTPServer):
         
         try:
             robot_processor = msg['To'].split('@')[0]
+            if robot_processor.find("<"):
+                robot_processor=robot_processor.split("<",1)[0].strip()
+
             if msg.is_multipart():
                 msg_parts = msg.get_payload()
                 commands_str=""

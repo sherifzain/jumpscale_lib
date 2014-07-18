@@ -6,8 +6,11 @@ import JumpScale.baselib.mailclient
 
 robotdefinition="""
 
-user (u)
+user (u,users)
 - list (l)
+-- company #optional
+
+- export (e)
 -- company #optional
 
 - new (n)
@@ -187,7 +190,7 @@ id.key.dsa.pub=
         else:
             return 'User created successfully.'
 
-    def user__list(self, **args):
+    def users_get(self,**args):
         result={}
         for path in j.system.fs.listFilesInDir(self.path, recursive=True, filter="*.hrd"):
             hrd=j.core.hrd.getHRD(path)
@@ -204,31 +207,89 @@ id.key.dsa.pub=
                     result[hrd.get("id.login")]=hrd
             else:   
                 result[hrd.get("id.login")]=hrd
-        keys=result.keys()
-        keys.sort()
+        return result
+
+
+    def user__export(self, **args):
+
         out=""
-        for key in keys:
-            hrd=result[key]
-            out+="!user.new\n"
-            out+="ulogin=%s\n"%hrd.get("id.login")
-            #out+="upasswd=%s\n"%hrd.get("id.passwd")
-            out+="firstname=%s\n"%hrd.get("id.firstname")
-            out+="lastname=%s\n"%hrd.get("id.lastname")
-            out+="alias=%s\n"%hrd.get("id.alias")
-            out+="bitbucketlogin=%s\n"%hrd.get("id.bitbucket.login")
-            out+="company=%s\n"%hrd.get("id.company")
-            out+="email=%s\n"%hrd.get("id.email")
-            out+="mobile=%s\n"%hrd.get("id.mobile")
-            out+="skype=%s\n"%hrd.get("id.skype")
-            out+="linkedin=%s\n"%hrd.get("id.linkedin")
-            out+="jabber=%s\n"%hrd.get("id.jabber")
-            out+="gmail=%s\n"%hrd.get("id.gmail")
-            out+="dropbox=%s\n"%hrd.get("id.dropbox")
-            # out+="dsakey=...\n%s\n...\n"%hrd.get("id.key.dsa.pub")
+        result=self.users_get(**args)
+        companies=[]
+        keys=result.keys()
+        for key in keys:        
+            hrd=result[key]                        
+            for company in [item.lower() for item in hrd.get("id.company").split(",") if item.strip()<>""]:
+                if company not in companies:
+                    companies.append(company)
+
+        for company in companies:
+            args["company"]=company
+            result=self.users_get(**args)
+            out+="\n###### %s ######\n"%company
+            keys=result.keys()
+            keys.sort()
+            for key in keys:        
+                hrd=result[key]   
+
+                out+="!user.new\n"
+                out+="ulogin=%s\n"%hrd.get("id.login")
+                #out+="upasswd=%s\n"%hrd.get("id.passwd")
+                out+="firstname=%s\n"%hrd.get("id.firstname")
+                out+="lastname=%s\n"%hrd.get("id.lastname")
+                out+="alias=%s\n"%hrd.get("id.alias")
+                out+="bitbucketlogin=%s\n"%hrd.get("id.bitbucket.login")
+                out+="company=%s\n"%hrd.get("id.company")
+                out+="email=%s\n"%hrd.get("id.email")
+                out+="mobile=%s\n"%hrd.get("id.mobile")
+                out+="skype=%s\n"%hrd.get("id.skype")
+                out+="linkedin=%s\n"%hrd.get("id.linkedin")
+                out+="jabber=%s\n"%hrd.get("id.jabber")
+                out+="gmail=%s\n"%hrd.get("id.gmail")
+                out+="dropbox=%s\n"%hrd.get("id.dropbox")
+                # out+="dsakey=...\n%s\n...\n"%hrd.get("id.key.dsa.pub")
+                out+="-------\n\n"
+        
             if len(keys)>1:
                 out+="\n########################################################\n"
+
         return out
             
+    def users_getalias(self,**args):
+        result2={}
+        result=self.users_get(**args)
+        keys=result.keys()
+        keys.sort()
+        for key in keys:
+            hrd=result[key]
+            result2[key.lower()]=[item.lower() for item in hrd.get("id.alias").split(",") if item.strip()<>""]
+        return result2
+
+
+    def user__list(self,**args):
+        
+        out=""
+        result=self.users_get(**args)
+        companies=[]
+        keys=result.keys()
+        for key in keys:        
+            hrd=result[key]                        
+            for company in [item.lower() for item in hrd.get("id.company").split(",") if item.strip()<>""]:
+                if company not in companies:
+                    companies.append(company)
+
+        for company in companies:
+            args["company"]=company
+            result=self.users_get(**args)
+            out+="\n**%s**\n"%company
+            keys=result.keys()
+            keys.sort()
+            for key in keys:        
+                hrd=result[key]   
+                if key<>"system":         
+                    out+="%s :%s %s (%s)\n"%(key,hrd.get("id.firstname"),hrd.get("id.lastname"),hrd.get("id.alias"))
+        
+        return out
+
 
     def user__get(self, **args):    
         self.findUser(args["ulogin"]) 
@@ -258,8 +319,8 @@ id.key.dsa.pub=
     def checkUser(self,userhrd,send2user=True):
 
         missing=""
-        for check in ["id.alias","id.company","id.email","id.mobile","id.skype","id.bitbucket.login",\
-            "id.jabber","id.firstname","id.lastname","id.gmail"]:
+        for check in ["id.alias","id.company","id.email","id.mobile","id.skype",\
+            "id.firstname","id.lastname","id.gmail"]:
             if userhrd.get(check,default="")=="":
                 check2=self.aliassesR[check]
                 missing+="%s,"%check2
@@ -294,15 +355,18 @@ id.role=    # shose one or more of: ceo,developer,teamlead,sales,syseng,supportl
 id.email=   #mark ALL YOUR EMAILS (comma separated), your primary one first
 id.mobile=  #mark all, again comma separated
 id.skype=
-id.bitbucket.login=
-id.linkedin= #if you have
-id.jabber=   #this is often same as your gmail acount
-id.gmail=    #your main gmail account which should be used to communicate when using google drive
-id.dropbox=  #your dropbox account
+id.bitbucket.login=     #if you have
+id.linkedin=            #if you have
+id.gmail=               #your main gmail account which should be used to communicate when using google drive
+id.jabber=              #this is normally same as your gmail acount
+id.dropbox=             #your dropbox account (if you have)
 
-the robot will keep on complaining untill all required fields are filled in
+the robot will keep on complaining untill all required fields are filled in.
+Please try to be as complete as possible
 
-just reply on this email and the robot will do the rest.
+just reply on this email and complete the fields starting with :#: with missing info
+the robot will do the rest (means will populate the user db for you)
+you will get an email wich confirms your input.
 
 """
             HELP=HELP.replace("$missing",missing)
