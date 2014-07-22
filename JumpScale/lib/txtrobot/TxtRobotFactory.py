@@ -230,6 +230,7 @@ class TxtRobot():
         return "snippetkey=%s"%md5
 
     def process(self, txt):
+        
         txt=self._findCodeBlocks(txt)        
         txt=self._longTextTo1Line(txt)
         txt=self._processSnippets(txt) #replace snippets 

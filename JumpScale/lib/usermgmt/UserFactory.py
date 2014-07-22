@@ -209,8 +209,25 @@ id.key.dsa.pub=
                 result[hrd.get("id.login")]=hrd
         return result
 
+    def hrd_out(self,hrd,out=""):
+        out+="!user.new\n"
+        out+="ulogin=%s\n"%hrd.get("id.login")
+        #out+="upasswd=%s\n"%hrd.get("id.passwd")
+        out+="firstname=%s\n"%hrd.get("id.firstname")
+        out+="lastname=%s\n"%hrd.get("id.lastname")
+        out+="alias=%s\n"%hrd.get("id.alias")
+        out+="bitbucketlogin=%s\n"%hrd.get("id.bitbucket.login")
+        out+="company=%s\n"%hrd.get("id.company")
+        out+="email=%s\n"%hrd.get("id.email")
+        out+="mobile=%s\n"%hrd.get("id.mobile")
+        out+="skype=%s\n"%hrd.get("id.skype")
+        out+="linkedin=%s\n"%hrd.get("id.linkedin")
+        out+="jabber=%s\n"%hrd.get("id.jabber")
+        out+="gmail=%s\n"%hrd.get("id.gmail")
+        out+="dropbox=%s\n"%hrd.get("id.dropbox")
+        return out
 
-    def user__export(self, **args):
+    def user__export(self, firstonly=False,**args):
 
         out=""
         result=self.users_get(**args)
@@ -225,33 +242,16 @@ id.key.dsa.pub=
         for company in companies:
             args["company"]=company
             result=self.users_get(**args)
-            out+="\n###### %s ######\n"%company
             keys=result.keys()
             keys.sort()
             for key in keys:        
                 hrd=result[key]   
-
-                out+="!user.new\n"
-                out+="ulogin=%s\n"%hrd.get("id.login")
-                #out+="upasswd=%s\n"%hrd.get("id.passwd")
-                out+="firstname=%s\n"%hrd.get("id.firstname")
-                out+="lastname=%s\n"%hrd.get("id.lastname")
-                out+="alias=%s\n"%hrd.get("id.alias")
-                out+="bitbucketlogin=%s\n"%hrd.get("id.bitbucket.login")
-                out+="company=%s\n"%hrd.get("id.company")
-                out+="email=%s\n"%hrd.get("id.email")
-                out+="mobile=%s\n"%hrd.get("id.mobile")
-                out+="skype=%s\n"%hrd.get("id.skype")
-                out+="linkedin=%s\n"%hrd.get("id.linkedin")
-                out+="jabber=%s\n"%hrd.get("id.jabber")
-                out+="gmail=%s\n"%hrd.get("id.gmail")
-                out+="dropbox=%s\n"%hrd.get("id.dropbox")
-                # out+="dsakey=...\n%s\n...\n"%hrd.get("id.key.dsa.pub")
+                out=self.hrd_out(hrd,out)
+                # out+="dsakey=...\n%s\n...\n"%hrd.get("id.key.dsa.pub")                
                 out+="-------\n\n"
         
             if len(keys)>1:
                 out+="\n########################################################\n"
-
         return out
             
     def users_getalias(self,**args):
@@ -292,13 +292,14 @@ id.key.dsa.pub=
 
 
     def user__get(self, **args):    
-        self.findUser(args["ulogin"]) 
-        out=self.user__list(**args)
-        out2=""
-        for line in out.split("\n"):
-            line=line.lstrip("< ")
-            out2+="%s\n"%line
-        return out2
+        hrd=self.findUser(args["ulogin"]) 
+        out=self.hrd_out(hrd)
+        return out
+        # out2=""
+        # for line in out.split("\n"):
+        #     line=line.lstrip("< ")
+        #     out2+="%s\n"%line
+        # return out2
 
     def user__check(self,**args):
         out3=""
@@ -307,7 +308,11 @@ id.key.dsa.pub=
             login=hrd.get("id.login").strip().lower()
             self.user__new(ulogin=login,checkonly=True)
             hrd=j.core.hrd.getHRD(path)
-            userEmail,missing,msg=self.checkUser(hrd)
+            if args.has_key("msg"):
+                msg=args["msg"]
+            else:
+                msg=""
+            userEmail,missing,msg2=self.checkUser(hrd,msg=msg)
             if userEmail<>"":
                 out3+="ERROR: '%s' %s\n"%(userEmail,missing)
 
@@ -316,7 +321,7 @@ id.key.dsa.pub=
 
         return "OK"
 
-    def checkUser(self,userhrd,send2user=True):
+    def checkUser(self,userhrd,msg="",send2user=True,**args):
 
         missing=""
         for check in ["id.alias","id.company","id.email","id.mobile","id.skype",\
@@ -330,6 +335,7 @@ id.key.dsa.pub=
         if missing<>"":
             # recipients=["kristof@incubaid.com"]
             recipients=[userhrd.get("id.email").split(",")[0]]
+            recipients=[recipients[0]]
 
             login=userhrd.get("id.login").strip().lower()
             
@@ -372,7 +378,10 @@ you will get an email wich confirms your input.
             HELP=HELP.replace("$missing",missing)
             message="%s\n\n%s\n"%(message,HELP)
             
-            if send2user:
+            if send2user:                
+                if message.strip()<>"" and msg<>"":
+                    message="%s\n\n%s"%(msg,message)
+
                 try:
                     j.clients.email.send(recipients, sender, subject, message, files=None)
                 except Exception,e:             

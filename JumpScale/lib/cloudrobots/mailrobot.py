@@ -117,6 +117,7 @@ class MailRobot(SMTPServer):
         if out=="":
             out=findNonReply(msg)
 
+
         if out.strip()=="":
             output = 'E:Robot could not find instructions.'
             j.clients.email.send(fromm, "%s@%s"%(robot,self.domain), subject, output)   
