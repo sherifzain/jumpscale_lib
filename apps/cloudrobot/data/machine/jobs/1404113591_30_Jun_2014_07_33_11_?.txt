@@ -1,8 +1,0 @@
-
-
-!ms1.login
-login=despiegk
-password=R00t3r
-cloudspace_name=default
-location=york
-
