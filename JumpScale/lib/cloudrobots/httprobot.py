@@ -44,8 +44,9 @@ class HTTPRobot(GeventWSServer):
             tmp, tmp, guid = cl.set(job)
             result = robot.process(snippet)
 
+            subject = 'Job: %s' % guid
             j.clients.email.send(useremail, "%s@%s" %
-                             (robot_processor, self.domain), 'subject', result)
+                             (robot_processor, self.domain), subject, result)
             output = guid
         else:
             output = 'Could not match any robot. Please make sure you are sending to the right one, \'youtrack\', \'user\' & \'machine\' are supported.\n'
