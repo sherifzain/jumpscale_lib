@@ -121,10 +121,10 @@ class MS1(object):
         # validate args
         cloudspace_id = self.getCloudspaceId(spacesecret)
         image_ids = [image['id'] for image in images_actor.list() if image['name'] == self.IMAGE_NAME]
-        if len(image_ids)=0:
+        if len(image_ids)==0:
             raise RuntimeError('E:Could not find a matching image')
         size_ids = [size['id'] for size in sizes_actor.list() if size['memory'] == int(memsize)]
-        if len(size_ids)=0:
+        if len(size_ids)==0:
             raise RuntimeError('E:Could not find a matching size')
         # create machine
         machine_id = machines_actor.create(cloudspaceId=cloudspace_id, name=name, description=description, sizeId=size_ids[0], imageId=image_ids[0], disksize=int(ssdsize))
@@ -139,7 +139,7 @@ class MS1(object):
         machines = machines_actor.list(cloudspaceId=cloudspace_id)
         return machines
 
-    def _getMachineApiActorId(self, spacesecret, name)):
+    def _getMachineApiActorId(self, spacesecret, name):
         api=self.getApiConnection(spacesecret)
         cloudspace_id = self.getCloudspaceId(spacesecret)
         machine_id = [machine['id'] for machine in machines_actor.list(cloudspace_id) if machine['name'] == name]
