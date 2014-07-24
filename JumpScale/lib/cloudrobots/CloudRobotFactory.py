@@ -56,8 +56,14 @@ class CloudRobotFactory(object):
         return queue
 
     def toFileRobot(self,channel,msg,mailfrom,rscriptname,args={}):
+        
+        # msg=j.tools.text.toAscii(msg)
 
-        msg=j.tools.text.toAscii(msg)
+        if msg.strip()=="":
+            raise RuntimeError("Cannot be empty msg")
+
+        if msg[-1]<>"\n":
+            msg+="\n"
         
         robotdir=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', channel)
         if not j.system.fs.exists(path=robotdir):
@@ -91,12 +97,13 @@ class CloudRobotFactory(object):
         premsg=""
         for key in args.keys():
             premsg+="@%s=%s\n"%(key,args[key])
-        msg="%s\%s\n"%(premsg,msg)
+        msg="%s\n%s\n"%(premsg,msg)
 
         self.job2redis(job)
 
-        path=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', channel,'in',channel)
+        path=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', channel,'in',filename)
         
+
         j.system.fs.writeFile(path,msg)
 
         return guid
