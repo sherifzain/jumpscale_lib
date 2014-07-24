@@ -15,15 +15,10 @@ class MS1(object):
         self.IMAGE_NAME = 'Ubuntu 14.04 (JumpScale)'
         self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', int(j.application.config.get('redis.port.redisp')))
 
-    def getCloudspaceObj(self, space_secret,**args):
-        if not self.redis_cl.hexists('cloudrobot:cloudspaces:secrets', space_secret):
-            raise RuntimeError("E:Space secret does not exist, cannot continue (END)")
-        space=json.loads(self.redis_cl.hget('cloudrobot:cloudspaces:secrets', space_secret))
-        return space
-
-    def getCloudspaceId(self,space_secret,**args):
-        cs=self.getCloudspaceObj(space_secret)
-        return cs["id"]
+    def getCloudspaceId(self, space_secret):
+        if not self.redis_cl.hexists('cloudspaces:secrets', space_secret):
+            return 'Space secret does not exist'
+        return int(self.redis_cl.hget('cloudspaces:secrets', space_secret))
 
     def setClouspaceSecret(self, login, password, cloudspace_name, location, spacesecret=None,**args):
         params = {'username': login, 'password': password, 'authkey': ''}
@@ -43,6 +38,24 @@ class MS1(object):
 
         self.redis_cl.hset('cloudrobot:cloudspaces:secrets', auth_key, json.dumps(cloudspace))
         return auth_key
+
+    def getCloudspaceLocation(self, space_secret):
+        cloudspace_id = self.getCloudspaceId(space_secret)
+        portal_client = j.core.portal.getClient('www.mothership1.com', 443, space_secret)
+        cloudspaces_actor = portal_client.getActor('cloudapi', 'cloudspaces')
+        cloudspace = [cs for cs in cloudspaces_actor.list() if cs['id'] == cloudspace_id][0] # TODO use get instead of list
+        return cloudspace['location']
+
+#    def getApiConnection(self, space_secret):
+#        location = self.getCloudspaceLocation(space_secret)
+#        host = 'www.mothership1.com' if location == 'ca1' else '%s.mothership1.com' % location
+#        try:
+#            j.core.portal.getClient(host, 443, space_secret)
+#        except Exception,e:
+#            from IPython import embed
+#            print "DEBUG NOW getApiConnection"
+#            embed()
+#            raise RuntimeError("E:Could not login to MS1 API.")
 
     def getApiConnection(self, space_secret,**args):
         cs=self.getCloudspaceObj(space_secret)
