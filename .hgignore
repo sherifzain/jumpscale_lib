@@ -1,0 +1,27 @@
+connector_key*
+.pyc$
+.swp$
+.rej$
+.orig$
+~$
+^.pydevproject
+^.metadata
+^ui/*
+\._.*
+.orig$
+^_generatedcode/*
+^_generated/*
+osis/logic/.*\.hrd
+osis/cfg/id.hrd
+/_remote/
+_model_.*\.spec$
+_osis\.py$
+_osis\.gen\.py$
+methodclass\/.*\.gen\.py$
+page\/form_.*\/5_form.*\.py$
+syntax: glob
+/donotuse/
+*donotuse*
+apps/appserver6Base/wiki/Docs/.files/img/testimages3/*
+*\.egg-info
+.branch
