@@ -51,6 +51,7 @@ class FileRobot():
                     
                     jobguid=self.findGlobal(C,"msg_jobguid")
                     if jobguid==None:
+                        print "new job"
                         job = cl.new()
                         job.start = j.base.time.getTimeEpoch()
                         job.rscript_name = name0
@@ -61,6 +62,7 @@ class FileRobot():
                         job.user = username
                     else:
                         job=cl.get(jobguid)
+                        print "existing job:%s"%jobguid
                     job.state = "RUNNING"
                     tmp, tmp, guid=cl.set(job)
                     j.servers.cloudrobot.job2redis(job)

@@ -5,6 +5,7 @@ from .MailRobot import MailRobot
 from .FileRobot import FileRobot
 import JumpScale.baselib.redis
 import ujson as json
+import time
 
 class CloudRobotFactory(object):
     def __init__(self):
@@ -33,24 +34,28 @@ class CloudRobotFactory(object):
     def job2redis(self,job):
         q=self._getQueue(job)
         data=json.dumps(job.__dict__)
-        self.redis.hset("robot:jobs",job.guid,data)        
+        self.redis.hset("robot:jobs",job.guid,data)   
+        print "job:%s to redis"%job.guid
         if job.end<>0:
             n=j.base.time.getTimeEpoch()
+            print "QUEUE OK"
             q.put(str(n))
             q.set_expire(n+120)
 
     def jobWait(self,jobguid):
         q=j.clients.redis.getGeventRedisQueue("127.0.0.1", 7768, "robot:queues:%s" % jobguid)
-        while q.empty():
-            print "queue empty for %s"%jobguid
-            time.sleep(0.1)
-        return q.get()
+        print "wait for job:%s"%jobguid
+        # while q.empty():
+        #     print "queue empty for %s"%jobguid
+        #     time.sleep(0.1)
+        jobguid=q.get()
+        return 
         
     def _getQueue(self,job):    
         queue=j.clients.redis.getGeventRedisQueue("127.0.0.1", 7768, "robot:queues:%s" % job.guid)
         return queue
 
-    def toFileRobot(self,channel,msg,mailfrom,rscriptname,args):
+    def toFileRobot(self,channel,msg,mailfrom,rscriptname,args={}):
 
         msg=j.tools.text.toAscii(msg)
         
@@ -63,10 +68,6 @@ class CloudRobotFactory(object):
         args["msg_email"]=mailfrom
         args["msg_channel"]=channel
 
-        premsg=""
-        for key in args.keys():
-            premsg+="@%s=%s\n"%(key,args[key])
-        msg="%s\%s\n"%(premsg,msg)
 
         subject2=j.tools.text.toAscii(args["msg_subject"],80)
         fromm="%s@%s"%(channel,self.domain)
@@ -84,6 +85,13 @@ class CloudRobotFactory(object):
         job.onetime = True
         job.user = self.getUserGuidOrEmail(mailfrom)
         tmp, tmp, guid = cl.set(job)
+
+        args["msg_jobguid"]=job.guid
+
+        premsg=""
+        for key in args.keys():
+            premsg+="@%s=%s\n"%(key,args[key])
+        msg="%s\%s\n"%(premsg,msg)
 
         self.job2redis(job)
 

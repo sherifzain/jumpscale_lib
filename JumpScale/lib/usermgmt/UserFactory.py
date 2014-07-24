@@ -261,11 +261,12 @@ id.key.dsa.pub=
         return out
 
     def oss__sync(self, **args):
-        cl=self.osis_user
+        cl=self.osis_system_user
         out=""
         result=self.users_get(**args)
         companies=[]
         keys=result.keys()
+        out=""
         for key in keys:        
             if args.has_key("company"):
                 if args["company"].lower().strip()<>company.lower().strip():
@@ -293,18 +294,13 @@ id.key.dsa.pub=
                 else:
                     user.passwd=hrd.get("id.passwd")
 
-                from IPython import embed
-                print "DEBUG NOW ioioi"
-                embed()
-                
+                #out+="%s\n"%user.guid
+                #@todo temp
+                out+="%s %s\n"%(user.guid,user.passwd)
 
                 cl.set(user)
-
-        from IPython import embed
-        print "DEBUG NOW oss__sync"
-        embed()
             
-        return "OK"
+        return out
             
     def users_getalias(self,**args):
         result2={}
