@@ -6,19 +6,20 @@ import gevent
 from gsmtpd import SMTPServer
 
 # for html parsing
-from htmllib import HTMLParser
-from formatter import AbstractFormatter, DumbWriter
-from cStringIO import StringIO
-from .httprobot import HTTPRobot
+# from htmllib import HTMLParser
+# from formatter import AbstractFormatter, DumbWriter
+# from cStringIO import StringIO
+
 import JumpScale.lib.html
 
-import JumpScale.baselib.redisworker
+# import JumpScale.baselib.redisworker
+import JumpScale.lib.cloudrobots
 
 class MailRobot(SMTPServer):
 
     def __init__(self, *args, **kwargs):
         self.emailparser = email.Parser.Parser()
-        self.acl = j.clients.agentcontroller.get()
+        # self.acl = j.clients.agentcontroller.get()
         self.templatefolder = j.system.fs.joinPaths(j.dirs.baseDir, 'apps', 'mailrobot', 'templates')
         SMTPServer.__init__(self, *args, **kwargs)
         self.domain=j.application.config.get("mailrobot.mailserver")
@@ -28,17 +29,18 @@ class MailRobot(SMTPServer):
         j.system.fs.createDir(self.archivefolder)
 
     def _html2text(self, html):
-        path=self.archivefolder
-        from IPython import embed
-        print "DEBUG NOW id"
-        embed()
-        p
+        raise RuntimeError("there is better way of going from html2text, there is extension created")
+        # path=self.archivefolder
+        # from IPython import embed
+        # print "DEBUG NOW id"
+        # embed()
+        # p
         
-        output = StringIO()
-        writer = DumbWriter(output)
-        p = HTMLParser(AbstractFormatter(writer))
-        p.feed(html)
-        return output.getvalue()
+        # output = StringIO()
+        # writer = DumbWriter(output)
+        # p = HTMLParser(AbstractFormatter(writer))
+        # p.feed(html)
+        # return output.getvalue()
     
     def process_message(self, peer, mailfrom, rcpttos, data):
         gevent.spawn(self.green_message, peer, mailfrom, rcpttos, data)
@@ -74,7 +76,7 @@ class MailRobot(SMTPServer):
         # return out
 
 
-    def toFileRobot(self,robot,fromm,subject,msg,html,addcommands=""):
+    def toFileRobot(self,robot,fromm,rscriptname,msg,html,args={}):
         
         msg=msg.replace("=3D","=")
         msg=msg.replace("=20","")
@@ -122,19 +124,7 @@ class MailRobot(SMTPServer):
             output = 'E:Robot could not find instructions.'
             j.clients.email.send(fromm, "%s@%s"%(robot,self.domain), subject, output)   
 
-        out="%s\n%s"%(addcommands,out)
-
-        robotdir=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', robot)
-        if not j.system.fs.exists(path=robotdir):
-            output = 'Could not find robot on fs. Please make sure you are sending to the right one, \'youtrack\' & \'machine\' & \'user\' are supported.'
-            j.clients.email.send(fromm, "%s@%s"%(robot,self.domain), subject, output)
-            print "COULD NOT FIND ROBOT ON %s"%robotdir
-            return
-
-        subject2=j.tools.text.toAscii(subject,80)
-        fromm2=j.tools.text.toAscii(fromm)
-        path=j.system.fs.joinPaths(j.dirs.varDir, 'cloudrobot', robot,'in',"%s_%s.py"%(fromm2,subject2))
-        j.system.fs.writeFile(path,out)
+        j.servers.cloudrobot.toFileRobot(channel=robot,msg=out,mailfrom=fromm,rscriptname=rscriptname,args=args)
 
 
     def green_message(self, peer, mailfrom, rcpttos, data):
@@ -181,10 +171,11 @@ class MailRobot(SMTPServer):
 
         
         try:
-            robot_processor = msg['To'].split('@')[0]
-            if robot_processor.find("<"):
-                robot_processor=robot_processor.split("<",1)[0].strip()
-
+            tto=msg['To']
+            if tto.find("<")<>-1:
+                tto=tto.split("<",1)[1]
+                tto=tto.split(">",1)[0]
+            robot_processor = tto.split('@')[0]
             if msg.is_multipart():
                 msg_parts = msg.get_payload()
                 commands_str=""
@@ -207,16 +198,16 @@ class MailRobot(SMTPServer):
                 commands_str = res
 
             print "Processing message from %s"  % msg['From']
-            output = ''            
+            output = ''      
+
+                        
             if not self.robots.has_key(robot_processor):
-                output = 'Could not match any robot. Please make sure you are sending to the right one, \'youtrack\' & \'machine\' are supported.'            
+                output = 'Could not match any robot. Please make sure you are sending to the right one, \'youtrack\' & \'machine\' are supported.'    
+                print "could not find right robot:'%s'"%robot_processor        
                 j.clients.email.send([mailfrom], "%s@%s"%(robot_processor,self.domain), msg.get('subject'), output)
                 return
             else:
-                mail_robot="%s@%s"%(robot_processor,self.domain)
-                commands_str_add="@mail_subject=%s\n@mail_from=%s\n@mail_robot=%s\n"%(msg.get('subject'),mailfrom,\
-                    mail_robot)
-                self.toFileRobot(robot_processor,mailfrom,msg.get('subject'),commands_str,html,addcommands=commands_str_add)
+                self.toFileRobot(robot_processor,mailfrom,msg.get('subject'),commands_str,html)
 
         except Exception,e:
             print j.errorconditionhandler.parsePythonErrorObject(e)            

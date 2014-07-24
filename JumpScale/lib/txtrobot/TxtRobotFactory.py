@@ -235,12 +235,6 @@ class TxtRobot():
         txt=self._longTextTo1Line(txt)
         txt=self._processSnippets(txt) #replace snippets 
 
-        if txt.strip()=="":
-            from IPython import embed
-            print "DEBUG NOW ooo"
-            embed()
-            
-
         entity=""
         args={}
         cmds=list()

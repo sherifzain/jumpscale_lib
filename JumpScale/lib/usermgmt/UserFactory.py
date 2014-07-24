@@ -40,6 +40,10 @@ user (u,users)
 
 - check (c)
 
+oss
+- sync
+-- company #optional
+
 """
 import JumpScale.portal
 
@@ -253,6 +257,23 @@ id.key.dsa.pub=
             if len(keys)>1:
                 out+="\n########################################################\n"
         return out
+
+    def oss__sync(self, **args):
+
+        out=""
+        result=self.users_get(**args)
+        companies=[]
+        keys=result.keys()
+        for key in keys:        
+            if args.has_key("company"):
+                if args["company"].lower().strip()<>company.lower().strip():
+                    continue
+            hrd=result[key]   
+            from IPython import embed
+            print "DEBUG NOW oss__sync"
+            embed()
+            
+        return "OK"
             
     def users_getalias(self,**args):
         result2={}
