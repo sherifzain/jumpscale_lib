@@ -40,17 +40,15 @@ class CloudRobotFactory(object):
             q.set_expire(n+120)
 
     def jobWait(self,jobguid):
-        q=j.clients.redis.getRedisQueue("127.0.0.1", 7768, "robot:queues:%s" % jobguid)
+        q=j.clients.redis.getGeventRedisQueue("127.0.0.1", 7768, "robot:queues:%s" % jobguid)
         while q.empty():
             print "queue empty for %s"%jobguid
             time.sleep(0.1)
         return q.get()
         
     def _getQueue(self,job):    
-        queue=j.clients.redis.getRedisQueue("127.0.0.1", 7768, "robot:queues:%s" % job.guid)
-
+        queue=j.clients.redis.getGeventRedisQueue("127.0.0.1", 7768, "robot:queues:%s" % job.guid)
         return queue
-
 
     def toFileRobot(self,channel,msg,mailfrom,rscriptname,args):
 

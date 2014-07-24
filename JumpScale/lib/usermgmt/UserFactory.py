@@ -77,7 +77,9 @@ class UserCmds():
         self.aliassesR={}
         for key,val in self.aliasses.iteritems():
             self.aliassesR[val]=key
-
+        self.osis = j.core.osis.getClient(user='root')
+        self.osis_system_user=j.core.osis.getClientForCategory(self.osis, 'system', 'user')    
+        self.osis_oss_user=j.core.osis.getClientForCategory(self.osis, 'oss', 'user')
         
 
     def findUser(self,login,failIfNotExist=True):
@@ -259,7 +261,7 @@ id.key.dsa.pub=
         return out
 
     def oss__sync(self, **args):
-
+        cl=self.osis_user
         out=""
         result=self.users_get(**args)
         companies=[]
@@ -268,10 +270,39 @@ id.key.dsa.pub=
             if args.has_key("company"):
                 if args["company"].lower().strip()<>company.lower().strip():
                     continue
-            hrd=result[key]   
-            from IPython import embed
-            print "DEBUG NOW oss__sync"
-            embed()
+            hrd=result[key] 
+            login=hrd.get("id.login")
+
+            comps= hrd.getList("id.company")
+            if "jumpscale" in comps or "mothership1" in comps or "codescalers" in comps or "incubaid" in comps:              
+                res=cl.simpleSearch({"id":login})
+                if len(res)>0:
+                    guid=res[0]["guid"]
+                    user=cl.get(guid)
+                else:
+                    user=cl.new()
+                    user.id=login
+
+                user.emails=hrd.getList("id.email")
+                user.groups=["admin"]
+
+                if hrd.get("id.passwd")=="":
+                    passwd=chr(j.base.idgenerator.generateRandomInt(97,123))+chr(j.base.idgenerator.generateRandomInt(97,123))+str(j.base.idgenerator.generateRandomInt(100,999))
+                    hrd.set("id.passwd",passwd)
+                    user.passwd
+                else:
+                    user.passwd=hrd.get("id.passwd")
+
+                from IPython import embed
+                print "DEBUG NOW ioioi"
+                embed()
+                
+
+                cl.set(user)
+
+        from IPython import embed
+        print "DEBUG NOW oss__sync"
+        embed()
             
         return "OK"
             
