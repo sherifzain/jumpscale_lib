@@ -96,7 +96,7 @@ class CloudRobotFactory(object):
         job.state = "PENDING"
         job.onetime = True
         job.user = self.getUserGuidOrEmail(mailfrom)
-        tmp, tmp, guid = cl.set(job)
+        guid,tmp, tmp = cl.set(job)
 
         args["msg_jobguid"]=job.guid
 
