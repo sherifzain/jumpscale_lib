@@ -2,6 +2,7 @@ from JumpScale import j
 import JumpScale.lib.txtrobot
 import JumpScale.lib.ms1
 import ujson as json
+import JumpScale.baselib.redis
 
 robotdefinition="""
 mothership1 (ms1)
@@ -72,9 +73,14 @@ machine (m)
 - getFreePubTcpPort
 -- name (n) #returns $freePubTcpPort
 
+- deploysshkey
+-- user (u)
+
 template (templates,image,images)
 - list
 
+space
+- getfree_ip_port #returns $space.free.tcp.addr, $space.free.tcp.port, $space.free.udp.port
 
 ####
 global required variables
@@ -103,6 +109,11 @@ class MS1RobotFactory(object):
         return robot
 
 class MS1RobotCmds():
+
+    def __init__(self):
+        self.alwaysdie=True
+        self.channel="machine"
+        self.redis=j.clients.redis.getRedisClient("127.0.0.1", 7768)
 
     def machine__new(self, **args):
         template=args["template"]        
@@ -168,4 +179,35 @@ class MS1RobotCmds():
             id,fullname=res[key]
             out+="%-20s (%-2s) %s\n"%(key,id,fullname)
         return out
+
+    def space__getfree_ip_port(self,**args):
+        res=j.tools.ms1.getFreeIpPort(**args)
+        out=""
+        for key,val in res.iteritems():
+            j.cloudrobot.vars[key]=val
+            out+="$%s=%s\n"%(key,val)
+        return out
+
+
+    def machine__deploysshkey(self,**args):        
+        ssh=j.tools.ms1._getSSHConnection(**args)
+        return
+
+        user=args["user"]        
+
+        if not self.redis.hexists("users",user):
+            raise RuntimeError("E:Could not find user:%s. \nmake sure !oss.sync has been executed."%user)
+
+        user=json.loads(self.redis.hget("users",user))
+        key=user["sshpubkey"]
+        ssh.mode_sudo()
+        from IPython import embed
+        print "DEBUG NOW ppp"
+        embed()
+        
+        ssh.ssh_authorize("/root",key)
+        from IPython import embed
+        print "DEBUG NOW machine__deploysshkey"
+        embed()
+        
 

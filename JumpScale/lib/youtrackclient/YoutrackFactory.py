@@ -123,6 +123,8 @@ class YouTrackRobotCmds():
     def __init__(self,url):
         self.url=url
         self.clients={}
+        self.alwaysdie=False
+        self.channel="youtrack"
 
     def getLoginPasswd(self,args):
         if not args.has_key("login") or not args.has_key("passwd"):

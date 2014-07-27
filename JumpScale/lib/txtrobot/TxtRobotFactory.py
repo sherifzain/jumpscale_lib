@@ -3,6 +3,7 @@ import yaml
 import JumpScale.baselib.hash
 from TxtRobotHelp import TxtRobotHelp
 import JumpScale.baselib.mailclient
+import JumpScale.lib.cloudrobots
 
 import JumpScale.baselib.redis
 import copy
@@ -45,6 +46,9 @@ class TxtRobot():
         alias["pwd"]="passwd"
         alias["password"]="passwd"
         self.argsAlias=alias
+
+        self.osis = j.core.osis.getClient(user='root')
+        self.osis_system_user=j.core.osis.getClientForCategory(self.osis, 'system', 'user')
 
     def _initCmds(self,definition):
 
@@ -102,6 +106,7 @@ class TxtRobot():
                         self.cmdAlias[ent][alias]=cmd                
 
     def _processGlobalArg(self,args,line):
+        # print "GARG:%s"%line
         res={}
         out=""
         alias=self.argsAlias
@@ -109,7 +114,19 @@ class TxtRobot():
         name=name.lower().strip("@")
         if alias.has_key(name):
             name=alias[name]
-        args[name]=data.strip().replace("\\n","\n")
+
+        val=data.strip().replace("\\n","\n")
+
+        if val.find("#")<>-1:
+            val=val.split("#",1)[0].strip()        
+
+        if val.find("$")<>-1:
+            for toreplace,replace in j.cloudrobot.vars.iteritems():
+                val=val.replace("$%s"%toreplace,str(replace))
+            for toreplace,replace in args.iteritems():
+                val=val.replace("$%s"%toreplace,str(replace))
+                    
+        args[name]=val
         return args
 
     def _longTextTo1Line(self,txt):
@@ -183,6 +200,8 @@ class TxtRobot():
             out=j.tools.text.prefix("< ",cblock)
         else:
             out=""
+        if out=="":
+            return ""
         if out[-1]<>"\n":
             out+="\n"
         if result<>"":
@@ -192,15 +211,14 @@ class TxtRobot():
         return out
 
     def responseError(self,cblock,result):
-        out=cblock
-
-            
+        out=cblock            
         if out.strip()<>"" and out[-1]<>"\n":
             out+="\n"        
         if result<>"":
             out+=j.tools.text.prefix(">ERROR: ",result)
         if out.strip()<>"" and out[-1]<>"\n":
             out+="\n"            
+        print out
         return out
 
     def _processSnippets(self,txt):
@@ -230,7 +248,9 @@ class TxtRobot():
         return "snippetkey=%s"%md5
 
     def process(self, txt):
-        
+                
+        j.cloudrobot.vars={}
+
         txt=self._findCodeBlocks(txt)        
         txt=self._longTextTo1Line(txt)
         txt=self._processSnippets(txt) #replace snippets 
@@ -247,6 +267,8 @@ class TxtRobot():
         gargs={}
 
         cmdfound=False
+
+        rc=0
 
         for line in splitted:
             # print "process:%s"%line
@@ -271,10 +293,19 @@ class TxtRobot():
                 # out+= '%s\n' % self.definition  #<br/>
                 continue
 
+            if line.find("robot.stop")<>-1:
+                # out+= '%s\n' % self.definition  #<br/>
+                break
+
             if cmd<>"" and (line[0]=="!" or line[0]=="@" or line.find("******")<>-1):
                 #end of cmd block                
                 cmdfound=True
-                out+=self.processCmd(cmdblock,entity, cmd, args,gargs)                
+                res2,rc=self.processCmd(cmdblock,entity, cmd, args,gargs)
+                out+=res2
+                
+                if rc>0 and self.cmdobj.alwaysdie:
+                    break
+
                 cmdblock=""
                 cmd=""                
 
@@ -287,7 +318,7 @@ class TxtRobot():
                 out+=self.response(line,self._snippetCreate(remainder.strip()))
                 continue
 
-            if cmd=="" and line.find("=")<>-1:
+            if line.find("@")==0 or (cmd=="" and line.find("=")<>-1):
                 #global args                
                 gargs=self._processGlobalArg(gargs,line)
                 out+="%s\n"%line
@@ -301,7 +332,10 @@ class TxtRobot():
                 line2=line.strip("!")
                 line2=line2.strip()
                 if line2.find(".")==-1:
-                    raise RuntimeError("format needs to be !entity.cmd (here:%s)"%line2)
+                    # raise RuntimeError("format needs to be !entity.cmd (here:%s)"%line2)
+                    out+=self.responseError(line2,"format needs to be !entity.cmd")
+                    if self.cmdobj.alwaysdie:
+                        break
                 entity,cmd=line2.split(".",1)
                 entity=entity.lower().strip()
                 if cmd.find(" ")<>-1:
@@ -312,17 +346,24 @@ class TxtRobot():
                 if self.entityAlias.has_key(entity):
                     entity=self.entityAlias[entity]
 
-                if not entity in self.entities:
-                    # out+= '%s\n' % self.error(,help=True)
-                    out+=self.responseError(line,"Could not find entity:'%s'"%(entity))
-                    continue
+                if not entity=="robot":
 
-                if self.cmdAlias[entity].has_key(cmd):
-                    cmd=self.cmdAlias[entity][cmd]
+                    if not entity in self.entities:
+                        # out+= '%s\n' % self.error(,help=True)
+                        out+=self.responseError(line,"Could not find entity:'%s'"%(entity))
+                        if self.cmdobj.alwaysdie:
+                            break
+                        continue
 
-                if not cmd in self.cmds[entity]:
-                    out+= self.responseError(line,"Could not understand command '%s'."%(cmd))
-                    continue
+                    if self.cmdAlias[entity].has_key(cmd):
+                        cmd=self.cmdAlias[entity][cmd]
+
+                    if not cmd in self.cmds[entity]:
+                        out+= self.responseError(line,"Could not understand command '%s'."%(cmd))
+                        if self.cmdobj.alwaysdie:
+                            break                    
+                        continue
+
                 if line.find(" ")<>-1:
                     remainder=line.split(" ",1)[1]
                     args["name"]=remainder.strip()
@@ -336,10 +377,11 @@ class TxtRobot():
                 # print "args:%s:%s '%s'"%(name,data,line)
                 args[name]=data.strip().replace("\\n","\n")
 
-        if cmd<>"":
+        if cmd<>"" and rc==0:
             #end of cmd block
             cmdfound=True                
-            out+=self.processCmd(cmdblock,entity, cmd, args,gargs)
+            res2,rc=self.processCmd(cmdblock,entity, cmd, args,gargs)
+            out+=res2
 
         out=out.strip()+"\n"
 
@@ -374,48 +416,122 @@ class TxtRobot():
         for key,val in gargs.iteritems():
             args[key]=val
         
-        key="%s__%s"%(entity,cmd)
+        for key,val in args.iteritems():
+            if val.find("#")<>-1:
+                val=val.split("#",1)[0].strip()
+            if val.find("$")<>-1:
+                for toreplace,replace in j.cloudrobot.vars.iteritems():
+                    val=val.replace("$%s"%toreplace,str(replace))
+                for toreplace,replace in args.iteritems():
+                    val=val.replace("$%s"%toreplace,str(replace))                    
+                    
+                args[key]=val
+
         result=None
-        if self.cmdobj<>None:
-            if hasattr(self.cmdobj,key):
-                try:
-                    method=eval("self.cmdobj.%s"%key)
-                except Exception,e:
-                    return self.responseError(cmdblock,"Cannot execute: '%s':'%s' , could not eval code."%(entity,cmd))
-                #now execute the code
-                try:
-                    result=method(**args)
-                except Exception,e:
-                    if str(e).find("E:")==0:
-                        # j.errorconditionhandler.processPythonExceptionObject(e)
-                        e=str(e)[2:]
-                        print e
-                        return self.responseError(cmdblock,"Cannot execute: '%s':'%s'\n%s"%(entity,cmd,e))
-                    elif str(e).find("F:")==0:
-                        # j.errorconditionhandler.processPythonExceptionObject(e)
-                        e=str(e)[2:]
-                        print e                        
-                        return self.responseError(e,"Cannot execute: '%s':'%s'\n"%(entity,cmd))
-                    else:
-                        j.errorconditionhandler.processPythonExceptionObject(e)
-                    return self.responseError(cmdblock,"Cannot execute: '%s':'%s' , could not execute code, error."%(entity,cmd))
+
+        if entity=="robot":
+            result=self.processRobotCmd(cmdblock,cmd, args)
+            if str(result).find("E:")==0:
+                # j.errorconditionhandler.processPythonExceptionObject(e)
+                result=str(result)[2:]
+                print result
+                return self.responseError(cmdblock,"Cannot execute: !%s.%s\nERROR:%s"%(entity,cmd,result)),1
+        else:
+            key="%s__%s"%(entity,cmd)
+            if self.cmdobj<>None:
+                if hasattr(self.cmdobj,key):
+                    try:
+                        method=eval("self.cmdobj.%s"%key)
+                    except Exception,e:
+                        return self.responseError(cmdblock,"Cannot execute: '%s':'%s' , could not eval code."%(entity,cmd)),1
+                    #now execute the code
+                    try:
+                        result=method(**args)
+                    except Exception,e:
+                        if str(e).find("E:")==0:
+                            # j.errorconditionhandler.processPythonExceptionObject(e)
+                            e=str(e)[2:]
+                            print e
+                            return self.responseError(cmdblock,"Cannot execute: '%s':'%s'\n%s"%(entity,cmd,e)),1
+                        elif str(e).find("F:")==0:
+                            # j.errorconditionhandler.processPythonExceptionObject(e)
+                            e=str(e)[2:]
+                            print e                        
+                            return self.responseError(e,"Cannot execute: '%s':'%s'\n"%(entity,cmd))
+                        else:
+                            j.errorconditionhandler.processPythonExceptionObject(e)
+                        return self.responseError(cmdblock,"Cannot execute: '%s':'%s' , could not execute code, error."%(entity,cmd)),1
 
         if result==None:
-            return self.responseError(cmdblock,"Cannot execute: '%s':'%s' , entity:method not found."%(entity,cmd))
-        
+            return self.responseError(cmdblock,"Cannot execute: !%s.%s , entity:method not found."%(entity,cmd)),1
+
         if not j.basetype.string.check(result):
             result=yaml.dump(result, default_flow_style=False).replace("!!python/unicode ","")        
         out=self.response(cmdblock,result)
+
+        if out.find("$")<>-1:
+            for toreplace,replace in j.cloudrobot.vars.iteritems():
+                out=out.replace("$%s"%toreplace,str(replace))
+            for toreplace,replace in gargs.iteritems():
+                out=out.replace("$%s"%toreplace,str(replace))  
+            for toreplace,replace in args.iteritems():
+                out=out.replace("$%s"%toreplace,str(replace))  
+
         print out
+        return out,0
+
+    def processRobotCmd(self,cmdblock,cmd, args):
+        
+        # for key,val in args.iteritems():
+        #     if val.find("$")<>-1:
+        #         for toreplace,replace in j.cloudrobot.vars.iteritems():
+        #             val=val.replace("$%s"%toreplace,str(replace))
+        #         for toreplace,replace in args.iteritems():
+        #             val=val.replace("$%s"%toreplace,str(replace))   
+        
+        for key in args.keys():
+            if args[key].find("#")<>-1:
+                args[key]=args[key].split("#",1)[0].strip()
+
+        out=""
+        if cmd=="print":
+            if not args.has_key("msg"):
+                return "E:there should be msg argument."            
+            out=args["msg"]
+        elif cmd=="printvars":
+            for key,val in j.cloudrobot.vars.iteritems():
+                out+="$%s=%s\n"%(key,val)
+                
+        elif cmd=="verbosity":
+            j.cloudrobot.verbosity=int(args["name"])
+
+        elif cmd=="mail":
+            if args.has_key("to"):
+                recipients=args["to"]
+            else:
+                raise RuntimeError("not implemented yet, goal is to send email to who started the script")
+                # users = self.osis_system_user.simpleSearch({'id': username})
+                # if len(users)>0:
+                #     user=users[0]["id"]
+                # else:
+                #     raise RuntimeError("Authentication error: user not found.")    
+            if args.has_key("from"):
+                ffrom=args["from"]
+            else:
+                ffrom="%s@%s"%(self.cmdobj.channel,j.servers.cloudrobot.domain)
+
+            if args.has_key("subject"):
+                subject=args["subject"]
+            elif args.has_key("rscriptname"):
+                subject=args["rscriptname"]                
+            else:
+                subject="cloudrobot for channel:%s"%self.cmdobj.channel         
+
+            j.clients.email.send(recipients=recipients, sender=ffrom, subject=subject, message=args['msg'], files=None)
+            
+        else:
+            return "E:could not find cmd:%s"%(cmd)
         return out
-
-        # if j.basetype.list.check(result):
-        #     out=""
-        #     for item in result:
-        #         out+="- %s\n"%item
-        #     out+="\n\n"
-        #     return out
-
 
         
     def addCmdClassObj(self,cmdo):

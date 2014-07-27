@@ -1,7 +1,7 @@
 from JumpScale import j
 import JumpScale.lib.txtrobot
 import ujson as json
-
+import JumpScale.lib.cloudrobots
 import JumpScale.baselib.mailclient
 
 robotdefinition="""
@@ -57,6 +57,7 @@ class UserFactory(object):
 
 class UserCmds():
     def __init__(self):
+        self.alwaysdie=False
         self.path="/opt/code/incubaid/default__identities/identities/"
         self.aliasses={}
         self.aliasses["alias"]="id.alias"
@@ -80,6 +81,8 @@ class UserCmds():
         self.osis = j.core.osis.getClient(user='root')
         self.osis_system_user=j.core.osis.getClientForCategory(self.osis, 'system', 'user')    
         self.osis_oss_user=j.core.osis.getClientForCategory(self.osis, 'oss', 'user')
+        self.channel="user"
+        self.redis=j.clients.redis.getRedisClient("127.0.0.1", 7768)
         
 
     def findUser(self,login,failIfNotExist=True):
@@ -299,6 +302,18 @@ id.key.dsa.pub=
                 out+="%s %s\n"%(user.guid,user.passwd)
 
                 cl.set(user)
+
+                pubkey=hrd.get("id_key_dsa_pub")
+
+                userd=user.__dict__
+                if userd.has_key('_ckey'):
+                    userd.pop('_ckey')
+                if userd.has_key('_meta'):
+                    userd.pop('_meta')
+
+                userd["sshpubkey"]=hrd.get("id_key_dsa_pub",default="")
+                
+                self.redis.hset("users",login,json.dumps(userd))
             
         return out
             

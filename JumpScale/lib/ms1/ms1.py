@@ -2,6 +2,7 @@ import requests
 import time
 from JumpScale import j
 import JumpScale.portal
+import JumpScale.lib.cloudrobots
 
 import JumpScale.baselib.remote
 import JumpScale.baselib.redis
@@ -23,29 +24,28 @@ class MS1(object):
         return space
 
 
-    # def getCloudspaceId(self, space_secret):
-    #     if not self.redis_cl.hexists('cloudspaces:secrets', space_secret):
-    #         return 'Space secret does not exist'
-    #     return int(self.redis_cl.hget('cloudspaces:secrets', space_secret))
+    def getCloudspaceId(self, space_secret):
+        space=self.getCloudspaceObj(space_secret)
+        return space["id"]
 
-    # def setClouspaceSecret(self, login, password, cloudspace_name, location, spacesecret=None,**args):
-    #     params = {'username': login, 'password': password, 'authkey': ''}
-    #     response = requests.post('https://www.mothership1.com/restmachine/cloudapi/users/authenticate', params)
-    #     if response.status_code != 200:
-    #         raise RuntimeError("E:Could not authenticate user %s" % login)
-    #     auth_key = response.json()
-    #     params = {'authkey': auth_key}
-    #     response = requests.post('https://www.mothership1.com/restmachine/cloudapi/cloudspaces/list', params)
-    #     cloudspaces = response.json()
+    def setClouspaceSecret(self, login, password, cloudspace_name, location, spacesecret=None,**args):
+        params = {'username': login, 'password': password, 'authkey': ''}
+        response = requests.post('https://www.mothership1.com/restmachine/cloudapi/users/authenticate', params)
+        if response.status_code != 200:
+            raise RuntimeError("E:Could not authenticate user %s" % login)
+        auth_key = response.json()
+        params = {'authkey': auth_key}
+        response = requests.post('https://www.mothership1.com/restmachine/cloudapi/cloudspaces/list', params)
+        cloudspaces = response.json()
         
-    #     cloudspace = [cs for cs in cloudspaces if cs['name'] == cloudspace_name and cs['location'] == location]
-    #     if cloudspace:
-    #         cloudspace = cloudspace[0]
-    #     else:
-    #         raise RuntimeError("E:Could not find a matching cloud space with name %s and location %s" % (cloudspace_name, location))
+        cloudspace = [cs for cs in cloudspaces if cs['name'] == cloudspace_name and cs['location'] == location]
+        if cloudspace:
+            cloudspace = cloudspace[0]
+        else:
+            raise RuntimeError("E:Could not find a matching cloud space with name %s and location %s" % (cloudspace_name, location))
 
-    #     self.redis_cl.hset('cloudrobot:cloudspaces:secrets', auth_key, json.dumps(cloudspace))
-    #     return auth_key
+        self.redis_cl.hset('cloudrobot:cloudspaces:secrets', auth_key, json.dumps(cloudspace))
+        return auth_key
 
     # def getCloudspaceLocation(self, space_secret):
     #     cloudspace_id = self.getCloudspaceId(space_secret)
@@ -171,6 +171,9 @@ class MS1(object):
 
         cloudspace_id = self.getCloudspaceId(spacesecret)
 
+        j.cloudrobot.vars["cloudspace.id"]=cloudspace_id
+        j.cloudrobot.vars["machine.name"]=name
+
         memsize2=memsizes[memsize]
         size_ids = [size['id'] for size in sizes_actor.list() if size['memory'] == int(memsize2)]
         if len(size_ids)==0:
@@ -187,7 +190,22 @@ class MS1(object):
                 sizeId=size_ids[0], imageId=templateid, disksize=int(ssdsize2))
         except Exception,e:
             if str(e).find("Selected name already exists")<>-1:
-                raise RuntimeError("E:Could not create machine it does already exist.")
+                raise RuntimeError("E:Could not create machine it does already exist.")            
+            raise RuntimeError("E:Could not create machine, unknown error.")
+        
+        j.cloudrobot.vars["machine.id"]=machine_id
+
+        for _ in range(30):
+            machine = machines_actor.get(machine_id)
+            if j.basetype.ipaddress.check(machine['interfaces'][0]['ipAddress']):
+                break
+            else:
+                time.sleep(2)
+        if not j.basetype.ipaddress.check(machine['interfaces'][0]['ipAddress']):
+            raise RuntimeError('E:Machine was created, but never got an IP address')
+
+        j.cloudrobot.vars["machine.ip.addr"]=machine['interfaces'][0]['ipAddress']
+            
         return machine_id
 
     def listImages(self,spacesecret,**args):
@@ -286,6 +304,7 @@ class MS1(object):
             cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
             cloudspace = cloudspaces_actor.get(cloudspace_id)   
             pubip=cloudspace['publicipaddress'] 
+        j.cloudrobot.vars["space.ip.pub"]=pubip
         self._deletePortForwardRule(spacesecret, name, pubip, pubipport, 'tcp')
         portforwarding_actor.create(cloudspace_id, pubip, str(pubipport), machine_id, str(machineport), protocol)
         return "OK"
@@ -305,7 +324,44 @@ class MS1(object):
 
         return "OK"        
 
-    def execSshScript(self, spacesecret, name, script,**args):
+    def getFreeIpPort(self,spacesecret,**args):
+        api=self.getApiConnection(spacesecret)
+        cloudspace_id = self.getCloudspaceId(spacesecret)
+        cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
+
+        vars={}
+    
+        space=cloudspaces_actor.get(cloudspace_id)
+        vars["space.free.tcp.addr"]=space["publicipaddress"]
+        j.cloudrobot.vars["space.ip.pub"]=space["publicipaddress"]
+        pubip=space["publicipaddress"]
+
+        portforwarding_actor = api.getActor('cloudapi', 'portforwarding')
+
+        tcpports={}
+        udpports={}
+        for item in portforwarding_actor.list(cloudspace_id):
+            if item['publicIp']==pubip:
+                if item['protocol']=="tcp":
+                    tcpports[int(item['publicPort'])]=True
+                elif item['protocol']=="udp":
+                    udpports[int(item['publicPort'])]=True
+
+        for i in range(90,1000):
+            if not tcpports.has_key(i) and not udpports.has_key(i):
+                break
+
+        if i>1000:
+            raise RuntimeError("E:cannot find free tcp or udp port.")
+
+        vars["space.free.tcp.port"]=str(i)
+        vars["space.free.udp.port"]=str(i)
+
+        return vars
+        
+        
+
+    def _getSSHConnection(self, spacesecret, name, **args):
         api,machines_actor,machine_id,cloudspace_id=self._getMachineApiActorId(spacesecret,name)
         cloudspaces_actor = api.getActor('cloudapi', 'cloudspaces')
 
@@ -314,8 +370,8 @@ class MS1(object):
             return 'Machine %s does not belong to cloudspace whose secret is given' % name
         
 
-        # tempport=j.base.idgenerator.generateRandomInt(1000,1500)
-        tempport=1333
+        tempport=j.base.idgenerator.generateRandomInt(1000,1500)
+        # tempport=1333
 
         counter=1
         localIP=machine["interfaces"][0]["ipAddress"]
@@ -343,6 +399,19 @@ class MS1(object):
         ssh_connection.connect('%s:%s' % (cloudspace['publicipaddress'], tempport), username)
         # if not j.system.net.waitConnectionTest(cloudspace['publicipaddress'], int(sshport), 60):
         #     return "Failed to connect to %s %s" % (cloudspace['publicipaddress'], ssh_port)
+
+        username, password = machine['accounts'][0]['login'], machine['accounts'][0]['password']
+        ssh_connection.fabric.api.env['password'] = password
+        ssh_connection.fabric.api.env['connection_attempts'] = 5
+        ssh_connection.connect('%s:%s' % (cloudspace['publicipaddress'], tempport), username)
+        # if not j.system.net.waitConnectionTest(cloudspace['publicipaddress'], int(sshport), 60):
+        #     return "Failed to connect to %s %s" % (cloudspace['publicipaddress'], ssh_port)
+
+        return ssh_connection
+
+    def execSshScript(self, spacesecret, name, script,**args):
+        
+        ssh_connection=self._getSSHConnection(spacesecret,name,**args)
 
         out=""
         for line in script.split("\n"):

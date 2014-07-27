@@ -7,6 +7,9 @@ import JumpScale.baselib.redis
 import ujson as json
 import time
 
+class Empty():
+    pass
+
 class CloudRobotFactory(object):
     def __init__(self):
         self.domain=j.application.config.get("mailrobot.mailserver")
@@ -14,6 +17,9 @@ class CloudRobotFactory(object):
         self.osis_robot_job = j.core.osis.getClientForCategory(self.osis, 'robot', 'job')        
         self.osis_oss_user = j.core.osis.getClientForCategory(self.osis, 'oss', 'user')
         self.redis=j.clients.redis.getRedisClient("127.0.0.1", 7768)
+        j.cloudrobot=Empty()
+        j.cloudrobot.vars={}
+        j.cloudrobot.verbosity=2
 
     def startMailServer(self,robots={}):
         robot = MailRobot(('0.0.0.0', 25))
@@ -33,7 +39,7 @@ class CloudRobotFactory(object):
 
     def job2redis(self,job):
         q=self._getQueue(job)
-        data=json.dumps(job.__dict__)
+        data=json.dumps(job.obj2dict())
         self.redis.hset("robot:jobs",job.guid,data)   
         print "job:%s to redis"%job.guid
         if job.end<>0:
