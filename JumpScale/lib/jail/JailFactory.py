@@ -1,9 +1,11 @@
 from JumpScale import j
+import JumpScale.baselib.redis
+import ujson as json
 
 class JailFactory(object):
 
     def __init__(self):
-        pass
+        self.redis=j.clients.redis.getRedisClient("127.0.0.1", 7768)
 
     def prepareJSJail(self):
         """
@@ -82,11 +84,20 @@ class JailFactory(object):
         j.system.process.killUserProcesses(user)
         j.system.fs.removeDirTree("/home/%s"%user)        
         j.system.unix.removeUnixUser(user, removehome=True,die=False)
-
-        from IPython import embed
-        print "DEBUG NOW ooo"
-        embed()
+        user=user.strip()
+        keys=self.redis.hkeys("robot:sessions")
+        for key in keys:
+            user2,session=key.split("__")
+            if user==user2.strip():
+                data=self.redis.hget("robot:sessions",key)
+                session=json.loads(data)
+                for pid in session["pids"]:
+                    if j.system.process.isPidAlive(pid):
+                        j.system.process.kill(pid)
+                        # print "KILL %s"%pid
+                self.redis.hdel("robot:sessions",key)
         
+            
     def killAllSessions(self):
         for user in  j.system.fs.listDirsInDir("/home",False,True):
             secrpath="/home/%s/.secret"%user
@@ -103,7 +114,7 @@ class JailFactory(object):
         # secret=j.system.fs.fileGetContents(secrpath).strip()
 
         #check session exists
-        sessions=self.listSessions()
+        sessions=self.listSessions(user)
         if not session in sessions:
             #need to create session
             if cmd<>None:

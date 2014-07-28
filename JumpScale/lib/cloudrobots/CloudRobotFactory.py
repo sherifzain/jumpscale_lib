@@ -1,8 +1,7 @@
 from JumpScale import j
 
-from .HTTPRobot import HTTPRobot
-from .MailRobot import MailRobot
 from .FileRobot import FileRobot
+
 import JumpScale.baselib.redis
 import ujson as json
 import time
@@ -22,15 +21,23 @@ class CloudRobotFactory(object):
         j.cloudrobot.verbosity=2
 
     def startMailServer(self,robots={}):
+        from .MailRobot import MailRobot
         robot = MailRobot(('0.0.0.0', 25))
         robot.robots=robots
         print "start server on port:25"
         robot.serve_forever()
 
     def startHTTP(self, addr='0.0.0.0', port=8099,robots={}):
+        from .HTTPRobot import HTTPRobot
         robot=HTTPRobot(addr=addr, port=port)
         robot.robots=robots
         robot.start()
+
+    def startXMPPRobot(self,username,passwd,robots={}):
+        from .XMPPRobot import XMPPRobot        
+        robot=XMPPRobot(username=username, passwd=passwd)
+        robot.robots=robots
+        robot.init()     
 
     def startFileRobot(self,robots={}):
         robot=FileRobot()

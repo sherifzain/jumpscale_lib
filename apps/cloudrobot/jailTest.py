@@ -11,8 +11,14 @@ import JumpScale.lib.jail
 #make everything ready for the jail
 # j.tools.jail.prepareJSJail()
 
-j.tools.jail.killAllSessions()
+user="kds"
+session="asession"
 
-j.tools.jail.createJSJail("kds","1234")
+j.tools.jail.createJSJail(user,"1234")
+j.tools.jail.createJSJailSession(user,session,"js")
+
+# j.tools.jail.killAllSessions()
+
+
 
 j.application.stop(0)
