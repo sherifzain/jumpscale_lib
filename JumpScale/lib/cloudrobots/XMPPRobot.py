@@ -121,36 +121,7 @@ class XMPPRobot(sleekxmpp.ClientXMPP):
                 embed()
             elif body=="q":                
                 self.redisq.put("1:despiegk@jabb3r.net:this is a test, very nice \n yes\n")
-                html="""
-<h1>Lorem ipsum dolor sit amet consectetuer adipiscing elit</h1>
-<a href="http://www.yahoo.com">here</a>
-<table class="data">
-  <tr>
-    <th>Entry Header 1</th>
-    <th>Entry Header 2</th>
-    <th>Entry Header 3</th>
-    <th>Entry Header 4</th>
-  </tr>
-  <tr>
-    <td>Entry First Line 1</td>
-    <td>Entry First Line 2</td>
-    <td>Entry First Line 3</td>
-    <td>Entry First Line 4</td>
-  </tr>
-  <tr>
-    <td>Entry Line 1</td>
-    <td>Entry Line 2</td>
-    <td>Entry Line 3</td>
-    <td>Entry Line 4</td>
-  </tr>
-  <tr>
-    <td>Entry Last Line 1</td>
-    <td>Entry Last Line 2</td>
-    <td>Entry Last Line 3</td>
-    <td>Entry Last Line 4</td>
-  </tr>
-</table>
-"""
+                html="""<a href="http://www.yahoo.com">here</a>"""
                 self.redisq.put("2:despiegk@jabb3r.net:%s"%html)
             else:
                 msg.reply(body).send()
