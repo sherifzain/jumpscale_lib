@@ -5,7 +5,7 @@ import JumpScale.lib.diskmanager
 import os
 # import JumpScale.baselib.netconfig
 import netaddr
-
+import JumpScale.baselib.remote
 import docker
 
 class Docker():
@@ -56,67 +56,30 @@ class Docker():
 
     def list(self):
         """
-        names of running & stopped machines
-        @return (running,stopped)
+        return list of names
+        """        
+        res={}
+        for item in self.client.containers():
+            res[str(item["Names"][0].strip("/").strip())]=str(item["Id"].strip())
+        return res
+
+    def ps(self):
         """
-        from IPython import embed
-        print "DEBUG NOW dockerlist"
-        embed()
-        
-        cmd="lxc-ls --fancy  -P %s"%self.basepath
-        out=self.execute(cmd)
+        return detailed info
+        """
+        return self.client.containers()        
 
-        stopped = []
-        running = []
-        current = None
-        for line in out.split("\n"):
-            line = line.strip()
-            if line.find('RUNNING')<>-1:
-                current = running
-            elif line.find('STOPPED')<>-1:
-                current = stopped
-            else:
-                continue
-            name=line.split(" ")[0]
-            if name.find(self._prefix)==0:
-                name=name.replace(self._prefix,"")
-                current.append(name)
-        running.sort()
-        stopped.sort()
-        return (running,stopped)
-
-    def getIp(self,name,fail=True):
-        hrd=self.getConfig(name)
-        return hrd.get("ipaddr")
-
-    def getConfig(self,name):
-        configpath=j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, name),"jumpscaleconfig.hrd")
-        if not j.system.fs.exists(path=configpath):
-            content="""
-ipaddr=
-"""
-            j.system.fs.writeFile(configpath,contents=content)
-        return j.core.hrd.getHRD( path=configpath)
-
-    def getPid(self,name,fail=True):
-        out=self.execute("lxc-info -n %s%s -p"%(self._prefix,name))
-        pid=0
-        for line in out.splitlines():
-            line=line.strip().lower()
-            name, pid = line.split(':')
-            pid = int(pid.strip())
-        if pid==0:
-            if fail:
-                raise RuntimeError("machine:%s is not running"%name)
-            else:
-                return 0
-        return pid
+    def getInfo(self,name):
+        for item in self.ps():
+            if "/%s"%name in item["Names"]:
+                return item
 
     def getProcessList(self, name, stdout=True):
         """
         @return [["$name",$pid,$mem,$parent],....,[$mem,$cpu]]
         last one is sum of mem & cpu
         """
+        raise RuntimeError("not implemented")
         pid = self.getPid(name)
         children = list()
         children=self._getChildren(pid,children)
@@ -144,6 +107,7 @@ ipaddr=
         return result
 
     def exportRsync(self,name,backupname,key="pub"):
+        raise RuntimeError("not implemented")
         self.removeRedundantFiles(name)
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)
@@ -163,6 +127,7 @@ ipaddr=
         return self.execute(cmd)
 
     def btrfsSubvolList(self):
+        raise RuntimeError("not implemented")
         out=self._btrfsExecute("subvolume list %s"%self.basepath)
         res=[]
         for line in out.split("\n"):
@@ -176,11 +141,13 @@ ipaddr=
         return res
 
     def btrfsSubvolNew(self,name):
+        raise RuntimeError("not implemented")
         if not self.btrfsSubvolExists(name):
             cmd="subvolume create %s/%s"%(self.basepath,name)
             self._btrfsExecute(cmd)
 
     def btrfsSubvolCopy(self,nameFrom,NameDest):
+        raise RuntimeError("not implemented")
         if not self.btrfsSubvolExists(nameFrom):
             raise RuntimeError("could not find vol for %s"%nameFrom)
         if j.system.fs.exists(path="%s/%s"%(self.basepath,NameDest)):
@@ -189,11 +156,13 @@ ipaddr=
         self._btrfsExecute(cmd)    
 
     def btrfsSubvolExists(self,name):
+        raise RuntimeError("not implemented")
         subvols=self.btrfsSubvolList()
         # print subvols
         return name in subvols
 
     def btrfsSubvolDelete(self,name):
+        raise RuntimeError("not implemented")
         if self.btrfsSubvolExists(name):
             cmd="subvolume delete %s/%s"%(self.basepath,name)
             self._btrfsExecute(cmd)
@@ -204,6 +173,7 @@ ipaddr=
             raise RuntimeError("vol cannot exist:%s"%name)
 
     def removeRedundantFiles(self,name):
+        raise RuntimeError("not implemented")
         basepath=self._getMachinePath(name)
         j.system.fs.removeIrrelevantFiles(basepath,followSymlinks=False)
 
@@ -214,6 +184,7 @@ ipaddr=
         """
         @param basename is the name of a start of a machine locally, will be used as basis and then the source will be synced over it
         """    
+        raise RuntimeError("not implemented")
         ipaddr=j.application.config.get("jssync.addr")
         path=self._getMachinePath(name)    
 
@@ -241,6 +212,7 @@ ipaddr=
         j.system.process.executeWithoutPipe(cmd)        
 
     def exportTgz(self,name,backupname):
+        raise RuntimeError("not implemented")
         self.removeRedundantFiles(name)
         path=self._getMachinePath(name)
         bpath= j.system.fs.joinPaths(self.basepath,"backups")
@@ -253,6 +225,7 @@ ipaddr=
         return bpath
 
     def importTgz(self,backupname,name):
+        raise RuntimeError("not implemented")
         path=self._getMachinePath(name)        
         bpath= j.system.fs.joinPaths(self.basepath,"backups","%s.tgz"%backupname)
         if not j.system.fs.exists(bpath):
@@ -262,96 +235,87 @@ ipaddr=
         cmd="cd %s;tar xzvf %s -C ."%(path,bpath)        
         j.system.process.executeWithoutPipe(cmd)
 
-    def create(self,name="",stdout=True,base="base",start=False,nameserver="8.8.8.8",replace=True):
+    def create(self,name="",ports="",vols="",volsro="",stdout=True,base="despiegk/js",nameserver="8.8.8.8",replace=True,cpu=None,mem=0):
         """
-        @param name if "" then will be an incremental nr
+        @param ports in format as follows  "22:8022 80:8080"  the first arg e.g. 22 is the port in the container
+        @param vols in format as follows "/var/insidemachine:/var/inhost # /var/1:/var/1 # ..."   '#' is separator
         """
+        name=name.lower().strip()
         print "create:%s"%name
-        if replace:
-            if j.system.fs.exists(self._getMachinePath(name)):
-                self.destroy(name)
-   
+        running=self.list()
+        running=running.keys()
+        if not replace:
+            if name in running:
+                j.events.opserror_critical("Cannot create machine with name %s, because it does already exists.")   
 
-        running,stopped=self.list()
-        machines=running+stopped
-        if name=="":
-            nr=0#max
-            for m in machines:
-                if j.basetype.integer.checkString(m):
-                    if int(m) > nr:
-                        nr=int(m)
-            nr += 1
-            name = nr
-        lxcname="%s%s"%(self._prefix,name)
+        self.destroy(name)
 
-        # cmd="lxc-clone --snapshot -B overlayfs -B btrfs -o %s -n %s -p %s -P %s"%(base,lxcname,self.basepath,self.basepath)
-        # print cmd
-        # out=self.execute(cmd)
+        if vols==None:
+            vols=""
+        if volsro==None:
+            volsro=""
 
-        self.btrfsSubvolCopy(base,lxcname)
-       
-        # if lxcname=="base":
-        self._setConfig(lxcname,base)
+        if mem==None:
+            mem=0
 
-        #is in path need to remove
-        resolvconfpath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","resolv.conf")
-        if j.system.fs.isLink(resolvconfpath):
-            j.system.fs.unlink(resolvconfpath)            
+        if int(mem)>0:
+            mem=long(mem)*1024
 
-        hostpath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","hostname")
-        j.system.fs.writeFile(filename=hostpath,contents=name)
+        portsdict={}
+        if len(ports)>0:
+            items=ports.split(" ")
+            for item in items:
+                key,val=item.split(":",1)
+                portsdict[int(key)]=int(val)
 
-        #add host in own hosts file
-        hostspath=j.system.fs.joinPaths(self._get_rootpath(name),"etc","hosts")
-        lines=j.system.fs.fileGetContents(hostspath)
-        out=""
-        for line in lines:
-            line=line.strip()
-            if line.strip()=="" or line[0]=="#":
-                continue
-            if line.find(name)<>-1:
-                continue
-            out+="%s\n"%line
-        out+="%s      %s\n"%("127.0.0.1",name)
-        j.system.fs.writeFile(filename=hostspath,contents=out)
+        volsdict={}
+        if len(vols)>0:
+            items=vols.split("#")
+            for item in items:
+                key,val=item.split(":",1)
+                volsdict[str(key).strip()]=str(val).strip()
 
-        j.system.netconfig.setRoot(self._get_rootpath(name)) #makes sure the network config is done on right spot
+        volsdictro={}
+        if len(volsro)>0:
+            items=volsro.split("#")
+            for item in items:
+                key,val=item.split(":",1)
+                volsdictro[str(key).strip()]=str(val).strip()
+                
+        volsdict["/var/js/%s/"%name]="/opt/jsbox_data/var/data/"
+        volsdict["/var/js/all/jpfiles/"]="/opt/jsbox_data/var/jpackages/files/"
 
-        j.system.netconfig.reset()
-        j.system.netconfig.setNameserver(nameserver)
+        binds={}
 
-        j.system.netconfig.root=""#set back to normal
+        for key,path in volsdict.iteritems():
+            j.system.fs.createDir(path) #create the path on hostname
+            binds[key]={"bind":path,"ro":False}
 
-        hrd=self.getConfig(name)
-        ipaddrs=j.application.config.getDict("lxc.mgmt.ipaddresses")
-        if ipaddrs.has_key(name):
-            ipaddr=ipaddrs[name]
-        else:
-            #find free ip addr
-            import netaddr            
-            existing=[netaddr.ip.IPAddress(item).value for item in  ipaddrs.itervalues() if item.strip()<>""]
-            ip = netaddr.IPNetwork(j.application.config.get("lxc.mgmt.ip"))
-            for i in range(ip.first+2,ip.last-2):
-                if i not in existing:
-                    ipaddr=str(netaddr.ip.IPAddress(i))
-                    break
-            ipaddrs[name]=ipaddr
-            j.application.config.setDict("lxc.mgmt.ipaddresses",ipaddrs)
+        for key,path in volsdictro.iteritems():
+            j.system.fs.createDir(path) #create the path on hostname
+            binds[key]={"bind":path,"ro":True}
 
-        # mgmtiprange=j.application.config.get("lxc.management.iprange")
-        self.networkSet( name,netname="mgmt0", bridge="lxc", pubips=["%s/24"%ipaddr]) #@todo make sure other ranges also supported
+        volskeys=volsdict.keys()+volsdictro.keys()
 
-        #set ipaddr in hrd file
-        hrd.set("ipaddr",ipaddr)
+        cmd="sh -c \"chmod 777 /var/run/screen; /var/run/screen;exec >/dev/tty 2>/dev/tty </dev/tty && /sbin/my_init -- /usr/bin/screen -s bash\""        
 
-        if start:
-            return self.start(name)
-        self.setHostName(name)
+        # mem=1000000
+
+        res=self.client.create_container(image=base, command=cmd, hostname=name, user="root", \
+            detach=False, stdin_open=False, tty=True, mem_limit=mem, ports=portsdict.keys(), environment=None, volumes=volskeys,  \
+            network_disabled=False, name=name, entrypoint=None, cpu_shares=cpu, working_dir=None, domainname=None, memswap_limit=0)
+        
+        id=res["Id"]
+        
+        self.client.start(container=id, binds=binds, port_bindings=portsdict, lxc_conf=None, \
+            publish_all_ports=False, links=None, privileged=False, dns=nameserver, dns_search=None, volumes_from=None, network_mode=None)
+         
         self.pushSSHKey(name)
 
-        return self.getIp(name)
+        # return self.getIp(name)
 
     def setHostName(self,name):
+        raise RuntimeError("not implemented")
         lines=j.system.fs.fileGetContents("/etc/hosts")
         out=""
         for line in lines.split("\n"):
@@ -361,165 +325,71 @@ ipaddr=
         out+="%s      %s\n"%(self.getIp(name),name)
         j.system.fs.writeFile(filename="/etc/hosts",contents=out)
         
-    def pushSSHKey(self,name):
-        path=j.system.fs.joinPaths(self._get_rootpath(name),"root",".ssh","authorized_keys")
-        content=j.system.fs.fileGetContents("/root/.ssh/id_dsa.pub")
-        j.system.fs.writeFile(filename=path,contents="%s\n"%content)
-        path=j.system.fs.joinPaths(self._get_rootpath(name),"root",".ssh","known_hosts")
-        j.system.fs.writeFile(filename=path,contents="")
+    def getPubPortForInternalPort(self,name,port):
+        info=self.getInfo(name)
+        for port2 in info["Ports"]:
+            if int(port2["PrivatePort"])==int(port):
+                return port2["PublicPort"]
 
-    def destroyAll(self):
-        running,stopped=self.list()
-        alll=running+stopped
-        for item in alll:
+    def pushSSHKey(self,name):
+        # path=j.system.fs.joinPaths(self._get_rootpath(name),"root",".ssh","authorized_keys")
+        keyloc="/root/.ssh/id_dsa.pub"
+        if not j.system.fs.exists(path=keyloc):
+            j.system.process.executeWithoutPipe("ssh-keygen -t dsa")            
+            if not j.system.fs.exists(path=keyloc):
+                raise RuntimeError("cannot find path for key %s, was keygen well executed"%keyloc)            
+        key=j.system.fs.fileGetContents(keyloc)
+        # j.system.fs.writeFile(filename=path,contents="%s\n"%content)
+        # path=j.system.fs.joinPaths(self._get_rootpath(name),"root",".ssh","known_hosts")
+        # j.system.fs.writeFile(filename=path,contents="")
+
+        c=j.remote.cuisine.api
+        c.fabric.api.env['password'] = "js007js"
+        c.fabric.api.env['connection_attempts'] = 5
+
+        ssh_port=self.getPubPortForInternalPort(name,22)
+        if ssh_port==None:
+            j.events.opserror_critical("cannot find pub port ssh")
+
+        c.connect('%s:%s' % ("localhost", ssh_port), u"root")
+
+        c.ssh_authorize("root",key)
+        return key
+
+    def getSSH(self,name):
+        ssh_port=self.getPubPortForInternalPort(name,22)        
+        c=j.remote.cuisine.api
+        c.fabric.api.env['connection_attempts'] = 2
+        c.connect('%s:%s' % ("localhost", ssh_port), u"root")
+        return c
+
+    def destroyall(self):
+        running=self.list()
+        for item in running.keys():
             self.destroy(item)
 
-    def destroy(self,name):
-        running,stopped=self.list()
-        alll=running+stopped
-        print "running:%s"%",".join(running)
-        print "stopped:%s"%",".join(stopped)
-        if name in running:            
-            # cmd="lxc-destroy -n %s%s -f"%(self._prefix,name)
-            cmd="lxc-kill -P %s -n %s%s"%(self.basepath,self._prefix,name)
-            self.execute(cmd)
-        while name in running:
-            running,stopped=self.list()
-            time.sleep(0.1)
-            print "wait stop"
-            alll=running+stopped
+        # startpath="/mnt/vmstor"
+        # cmd="btrfs subvol list %s"%startpath
+        # res=self.execute(cmd)
+        # for line in res.split("\n"):
+        #     if line.find("path")<>-1:
+        #         part=line.split("path",1)[1]
+        #         if part.find("docker2")<>-1:
+        #             # id=line.split("gen")[0].strip("ID").strip()
+        #             part=part.strip()
+        #             path="%s/%s"%(startpath,part)
+        #             command="btrfs subvol delete %s"%path
+        #             print j.system.process.execute(command, dieOnNonZeroExitCode=False, outputToStdout=False, useShell=False, ignoreErrorOutput=False)
 
-        self.btrfsSubvolDelete(name)
-        # #@todo put timeout in
-             
+    def destroy(self,name):        
+        running=self.list()        
+        if name in running.keys():
+            idd=running[name]    
+            self.client.kill(idd)
+            self.client.remove_container(idd)
+
     def stop(self,name):
-        # cmd="lxc-stop -n %s%s"%(self._prefix,name)
-        cmd="lxc-stop -P %s -n %s%s"%(self.basepath,self._prefix,name)
-        self.execute(cmd)
-
-    def start(self,name,stdout=True,test=True):
-        print "start:%s"%name
-        cmd="lxc-start -d -P %s -n %s%s"%(self.basepath,self._prefix,name)
-        print cmd
-        # cmd="lxc-start -d -n %s%s"%(self._prefix,name)
-        self.execute(cmd)
-        start=time.time()
-        now=start
-        found=False
-        while now<start+20:
-            running=self.list()[0]
-            if name in running:
-                found=True
-                break
-            time.sleep(0.2)
-            now=time.time()
-
-        if found==False:
-            msg= "could not start new machine, did not start in 20 sec."
-            if stdout:
-                print msg
-            raise RuntimeError(msg)
-    
-        self.setHostName(name)
-
-        ipaddr=self.getIp(name)
-        print "test ssh access to %s"%ipaddr
-        timeout=time.time()+10        
-        while time.time()<timeout:  
-            if j.system.net.tcpPortConnectionTest(ipaddr,22):
-                return
-            time.sleep(0.1)
-        raise RuntimeError("Could not connect to machine %s over port 22 (ssh)"%ipaddr)
-
-    def networkSet(self, machinename,netname="pub0",pubips=[],bridge="public",gateway=None):
-        bridge=bridge.lower()
-        print "set pub network %s on %s" %(pubips,machinename)
-        machine_cfg_file = j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, machinename), 'config')
-        machine_ovs_file = j.system.fs.joinPaths(self.basepath, '%s%s' % (self._prefix, machinename), 'ovsbr_%s'%bridge)
-        
-        # mgmt = j.application.config.get('lxc.mgmt.ip')
-        # netaddr.IPNetwork(mgmt)
-
-        config = '''
-lxc.network.type = veth
-lxc.network.flags = up
-#lxc.network.veth.pair = %s_%s
-lxc.network.name = %s
-lxc.network.script.up = $basedir/%s/ovsbr_%s
-lxc.network.script.down = $basedir/%s/ovsbr_%s
-'''  % (machinename,netname,netname,machinename,bridge,machinename,bridge)
-        config=config.replace("$basedir",self.basepath)
-
-        Covs="""
-#!/bin/bash
-if [ "$3" = "up" ] ; then
-/usr/bin/ovs-vsctl --may-exist add-port %s $5
-else
-/usr/bin/ovs-vsctl --if-exists del-port %s $5
-fi        
-""" % (bridge,bridge)
-
-        j.system.fs.writeFile(filename=machine_ovs_file,contents=Covs)
-
-        j.system.unix.chmod(machine_ovs_file, 0755)
-
-        ed=j.codetools.getTextFileEditor(machine_cfg_file)
-        ed.setSection(netname,config)
-
-        j.system.netconfig.setRoot(self._get_rootpath(machinename)) #makes sure the network config is done on right spot
-        for ipaddr in pubips:        
-            j.system.netconfig.enableInterfaceStatic(dev=netname,ipaddr=ipaddr,gw=gateway,start=False)#do never start because is for lxc container, we only want to manipulate config
-        j.system.netconfig.root=""#set back to normal
-
-
-    def networkSetPrivateVXLan(self, name, vxlanid, ipaddresses):
-        raise RuntimeError("not implemented")
-
-    def _setConfig(self,name,parent):
-        print "SET CONFIG"
-        base=self._getMachinePath(name)
-        baseparent=self._getMachinePath(parent)
-        machine_cfg_file = self._getMachinePath(name,'config')
-        C="""
-lxc.tty = 4
-lxc.pts = 1024
-lxc.arch = x86_64
-lxc.cgroup.devices.deny = a
-lxc.cgroup.devices.allow = c *:* m
-lxc.cgroup.devices.allow = b *:* m
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-lxc.cgroup.devices.allow = c 254:0 rm
-lxc.cgroup.devices.allow = c 10:229 rwm
-lxc.cgroup.devices.allow = c 10:200 rwm
-lxc.cgroup.devices.allow = c 1:7 rwm
-lxc.cgroup.devices.allow = c 10:228 rwm
-lxc.cgroup.devices.allow = c 10:232 rwm
-lxc.utsname = $name
-lxc.cap.drop = sys_module
-lxc.cap.drop = mac_admin
-lxc.cap.drop = mac_override
-lxc.cap.drop = sys_time
-lxc.hook.clone = /usr/share/lxc/hooks/ubuntu-cloud-prep
-#lxc.rootfs = overlayfs:$baseparent/rootfs:$base/delta0
-lxc.rootfs = $base/rootfs
-lxc.pivotdir = lxc_putold
-
-#lxc.mount.entry=/var/lib/lxc/jumpscale $base/rootfs/jumpscale none defaults,bind 0 0
-#lxc.mount.entry=/var/lib/lxc/shared $base/rootfs/shared none defaults,bind 0 0
-lxc.mount = $base/fstab
-"""        
-        C=C.replace("$name",name)    
-        C=C.replace("$baseparent",baseparent)
-        C=C.replace("$base",base)
-        j.system.fs.writeFile(machine_cfg_file,C)
-        # j.system.fs.createDir("%s/delta0/jumpscale"%base)
-        # j.system.fs.createDir("%s/delta0/shared"%base)
-        
-
+        running=self.list()        
+        if name in running.keys():
+            idd=running[name]    
+            self.client.kill(idd)
