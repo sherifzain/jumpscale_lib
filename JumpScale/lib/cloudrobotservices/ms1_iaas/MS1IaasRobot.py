@@ -99,8 +99,9 @@ ssdsize=10
 
 """
 import JumpScale.portal
+import JumpScale.lib.ms1
 
-class MS1RobotFactory(object):
+class MS1IaasRobot(object):
 
     def getRobot(self):
         robot = j.tools.txtrobot.get(robotdefinition)

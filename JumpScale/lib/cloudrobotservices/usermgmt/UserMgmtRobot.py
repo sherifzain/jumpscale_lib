@@ -47,7 +47,7 @@ oss
 """
 import JumpScale.portal
 
-class UserFactory(object):
+class UserMgmtRobot(object):
 
     def getRobot(self):
         robot = j.tools.txtrobot.get(robotdefinition)

@@ -14,7 +14,7 @@ class MS1(object):
     def __init__(self):
         self.secret = ''
         self.IMAGE_NAME = 'Ubuntu 14.04 (JumpScale)'
-        self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', int(j.application.config.get('redis.port.redisp')))
+        self.redis_cl = j.clients.redis.getGeventRedisClient('localhost', 7768)
 
 
     def getCloudspaceObj(self, space_secret,**args):

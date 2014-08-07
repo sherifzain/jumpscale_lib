@@ -6,21 +6,28 @@ import JumpScale.baselib.redis
 import ujson as json
 import time
 
+import JumpScale.grid.osis
+
 class Empty():
     pass
 
 class CloudRobotFactory(object):
     def __init__(self):
-        self.domain=j.application.config.get("mailrobot.mailserver")
-        self.osis = j.core.osis.getClient(user='root')
+        self.hrd=None
+
+    def _init(self):
+        osisinstance=self.hrd.get("cloudrobot.osis.connection")
+        self.osis =j.core.osis.getClientByInstance(osisinstance)        
         self.osis_robot_job = j.core.osis.getClientForCategory(self.osis, 'robot', 'job')        
         self.osis_oss_user = j.core.osis.getClientForCategory(self.osis, 'oss', 'user')
         self.redis=j.clients.redis.getRedisClient("127.0.0.1", 7768)
         j.cloudrobot=Empty()
         j.cloudrobot.vars={}
         j.cloudrobot.verbosity=2
+        self.domain=self.hrd.get("cloudrobot.mail.domain")
 
     def startMailServer(self,robots={}):
+        self._init()
         from .MailRobot import MailRobot
         robot = MailRobot(('0.0.0.0', 25))
         robot.robots=robots
@@ -28,18 +35,21 @@ class CloudRobotFactory(object):
         robot.serve_forever()
 
     def startHTTP(self, addr='0.0.0.0', port=8099,robots={}):
+        self._init()
         from .HTTPRobot import HTTPRobot
         robot=HTTPRobot(addr=addr, port=port)
         robot.robots=robots
         robot.start()
 
     def startXMPPRobot(self,username,passwd,robots={}):
+        self._init()
         from .XMPPRobot import XMPPRobot        
         robot=XMPPRobot(username=username, passwd=passwd)
         robot.robots=robots
         robot.init()     
 
     def startFileRobot(self,robots={}):
+        self._init()
         robot=FileRobot()
         robot.robots=robots
         robot.start()
