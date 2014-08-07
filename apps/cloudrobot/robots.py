@@ -10,20 +10,20 @@ jp=jp.getInstance(instance)
 
 j.servers.cloudrobot.hrd=jp.hrd_instance
 
-robots=jp.hrd_instance.getList("cloudrobot.robots")
-robots=[item.split("/",1)[0] for item in robots]
+robots2=jp.hrd_instance.getList("cloudrobot.robots")
+robots2=[item.split("/",1)[0] for item in robots2]
 
 import JumpScale.baselib.mailclient
 
 robots={}
 
 
-if "ms1_iaas" in robots:
-    import JumpScale.lib.ms1
-    robots["ms1_iaas"]= j.tools.ms1robot.getRobot()
+if "ms1_iaas" in robots2:
+    import JumpScale.lib.cloudrobotservices.ms1_iaas
+    robots["ms1_iaas"]= j.robots.ms1_iaas.getRobot()
 
-if "youtrack" in robots:    
-    import JumpScale.lib.youtrackclient
+if "youtrack" in robots2:    
+    import JumpScale.lib.cloudrobotservices.youtrack
 
     for item in jp.hrd_instance.getList("cloudrobot.robots"):
         if item.find("youtrack")==0:
@@ -35,10 +35,10 @@ if "youtrack" in robots:
 
     url=jp_yt.hrd_instance.get("youtrack.url")
     
-    robots["youtrack"]= j.tools.youtrack.getRobot(url)
+    robots["youtrack"]= j.robots.youtrack.getRobot(url)
 
-if "user" in robots:        
-    import JumpScale.lib.usermgmt
-    robots["user"]= j.tools.usermgmt.getRobot()
+if "user" in robots2:        
+    import JumpScale.lib.cloudrobotservices.usermgmt
+    robots["user"]= j.robots.usermgmt.getRobot()
 
 
