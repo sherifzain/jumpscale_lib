@@ -6,7 +6,7 @@ args=sys.argv
 instance=args[1]
 
 jp=j.packages.findNewest(name="cloudrobot",domain="serverapps")
-jp=jp.getInstance(instance)
+jp=jp.load(instance=instance)
 
 j.servers.cloudrobot.hrd=jp.hrd_instance
 
@@ -31,7 +31,7 @@ if "youtrack" in robots2:
             ytinstance=ytinstance.strip()
 
     jp_yt=j.packages.findNewest(name="youtrack_client",domain="serverapps")
-    jp_yt=jp_yt.getInstance(ytinstance)
+    jp_yt=jp_yt.load(instance=ytinstance)
 
     url=jp_yt.hrd_instance.get("youtrack.url")
     
